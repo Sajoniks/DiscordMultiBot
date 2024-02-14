@@ -1,0 +1,6 @@
+_ReSharper.Caches
+.idea
+*.exe
+obj
+bin
+*.db

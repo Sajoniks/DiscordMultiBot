@@ -1,0 +1,2 @@
+﻿namespace DiscordMultiBot.PollService.Command;
+

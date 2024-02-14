@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BDF6AF49-9ABD-48B6-90D6-128595C26F1D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordMultiBot.App", "src\DiscordMultiBot.App\DiscordMultiBot.App.csproj", "{D8E123D9-1B15-4CE1-B908-680B7FEFE02A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{FD9694A4-096A-4579-AAE8-CBA1F28B631D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordMultiBot.PollAPI", "src\DiscordMultiBot.PollAPI\DiscordMultiBot.PollAPI.csproj", "{DD5A80E7-7E69-4F49-A41B-298187AFB4A0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D8E123D9-1B15-4CE1-B908-680B7FEFE02A} = {BDF6AF49-9ABD-48B6-90D6-128595C26F1D}
+		{DD5A80E7-7E69-4F49-A41B-298187AFB4A0} = {BDF6AF49-9ABD-48B6-90D6-128595C26F1D}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D8E123D9-1B15-4CE1-B908-680B7FEFE02A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8E123D9-1B15-4CE1-B908-680B7FEFE02A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8E123D9-1B15-4CE1-B908-680B7FEFE02A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8E123D9-1B15-4CE1-B908-680B7FEFE02A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD5A80E7-7E69-4F49-A41B-298187AFB4A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD5A80E7-7E69-4F49-A41B-298187AFB4A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD5A80E7-7E69-4F49-A41B-298187AFB4A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD5A80E7-7E69-4F49-A41B-298187AFB4A0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
