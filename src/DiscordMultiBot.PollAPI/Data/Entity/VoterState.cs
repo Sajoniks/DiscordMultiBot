@@ -2,11 +2,6 @@
 
 namespace DiscordMultiBot.PollService.Data.Entity;
 
-public enum VoterStateValue
-{
-    NotReady,
-    Ready
-}
 
 [Table("VoterStates")]
 public class VoterState
@@ -18,11 +13,11 @@ public class VoterState
     public ulong UserId { get; set; }
     
     [Column("State"), NotNull]
-    public VoterStateValue State { get; set; } = VoterStateValue.NotReady;
+    public int State { get; set; }
     
     [Column("PollID"), NotNull]
     public ulong PollId { get; set; }
     
     [Association(ThisKey = nameof(PollId), OtherKey = nameof(Poll.Id))]
-    public Poll Poll { get; set; }
+    public Poll VotedPoll { get; set; }
 }

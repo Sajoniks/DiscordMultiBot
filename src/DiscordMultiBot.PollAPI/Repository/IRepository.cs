@@ -1,4 +1,5 @@
-﻿namespace DiscordMultiBot.PollService.Data;
+﻿namespace DiscordMultiBot.PollService.Repository;
 
-public interface IRepository<T> 
-{ }
+public interface IRepository
+{
+}

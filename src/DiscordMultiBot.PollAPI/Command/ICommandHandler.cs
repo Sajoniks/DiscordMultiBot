@@ -1,16 +1,14 @@
-﻿namespace DiscordMultiBot.PollService.Command;
+﻿using DiscordMultiBot.PollService.Data.Dto;
+using DiscordMultiBot.PollService.Data.Entity;
 
-public interface ICommandHandler
+namespace DiscordMultiBot.PollService.Command;
+
+public interface ICommandHandler<TCommand> where TCommand : ICommand
 {
-    
+    Task<ResultDto> ExecuteAsync(TCommand command);
 }
 
-public interface ICommandHandler<TCommand> : ICommandHandler where TCommand : ICommand
+public interface ICommandHandler<TCommand, TResult> where TCommand : ICommand
 {
-    Task Execute(TCommand command);
-}
-
-public interface ICommandHandler<TCommand, TResult> : ICommandHandler where TCommand : ICommand
-{
-    Task<TResult> Execute(TCommand command);
+    Task<ResultDto<TResult>> ExecuteAsync(TCommand command);
 }

@@ -2,12 +2,6 @@
 
 namespace DiscordMultiBot.PollService.Data.Entity;
 
-public enum PollType
-{
-    Numeric,
-    Binary
-}
-
 [Table("Polls")]
 public class Poll
 {
@@ -19,7 +13,13 @@ public class Poll
     
     [Column, NotNull]
     public string Options { get; set; } = "";
+
+    [Column, NotNull]
+    public bool IsAnonymous { get; set; } = false;
+
+    [Column, NotNull]
+    public int NumMembers { get; set; }
     
     [Column, NotNull]
-    public PollType PollType { get; set; }
+    public int PollType { get; set; }
 }

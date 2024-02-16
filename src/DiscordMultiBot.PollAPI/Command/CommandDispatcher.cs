@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using DiscordMultiBot.PollService.Data.Dto;
+using DiscordMultiBot.PollService.Data.Entity;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DiscordMultiBot.PollService.Command;
 
@@ -11,15 +13,21 @@ public class CommandDispatcher
         _provider = provider;
     }
 
-    public Task<TResult> ExecuteAsync<TCommand, TResult>(TCommand command) where TCommand : ICommand
+    public Task<ResultDto<TResult>> ExecuteAsync<TCommand, TResult>(TCommand command) where TCommand : ICommand
     {
         var handler = _provider.GetRequiredService<ICommandHandler<TCommand, TResult>>();
-        return handler.Execute(command);
+        return handler.ExecuteAsync(command);
     }
 
-    public Task ExecuteAsync<TCommand>(TCommand command) where TCommand : ICommand
+    public Task<ResultDto> ExecuteAsync<TCommand>(TCommand command) where TCommand : ICommand
     {
         var handler = _provider.GetRequiredService<ICommandHandler<TCommand>>();
-        return handler.Execute(command);
+        return handler.ExecuteAsync(command);
+    }
+
+    public Task<ResultDto<TResult>> QueryAsync<TQuery, TResult>(TQuery query) where TQuery : IQuery
+    {
+        var handler = _provider.GetRequiredService<IQueryHandler<TQuery, TResult>>();
+        return handler.AskAsync(query);
     }
 }

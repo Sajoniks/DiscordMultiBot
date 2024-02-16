@@ -87,4 +87,11 @@ public sealed class PollOptions : IList<string>
     }
 }
 
-public record PollDto(ulong Id, ulong ChannelId, PollOptions Options);
+public enum PollType
+{
+    Numeric,
+    Binary
+}
+
+public record PollDto(ulong Id, ulong ChannelId, PollType Type, PollOptions Options, bool IsAnonymous = false, PollMetadataDto? Metadata = null);
+public record PollMetadataDto(ulong ChannelId, ulong MessageId);

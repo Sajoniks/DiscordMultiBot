@@ -19,4 +19,42 @@
       <ProjectReference Include="..\DiscordMultiBot.PollAPI\DiscordMultiBot.PollAPI.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="appsettings.Dev.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="Databases\Poll.db">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="EmbedLayouts\Error.xml" />
+      <None Remove="EmbedLayouts\PreferencePoll.xml" />
+      <None Remove="EmbedLayouts\Response.xml" />
+      <None Remove="EmbedLayouts\YesNoPoll.xml" />
+      <None Remove="EmbedLayouts\TestLayout.xml" />
+      <None Remove="EmbedLayouts\PollResult.xml" />
+      <EmbeddedResource Include="EmbedLayouts\PollNumericView.xml" />
+      <EmbeddedResource Include="EmbedLayouts\PollResultView.xml" />
+      <None Remove="EmbedLayouts\PollView.xml" />
+      <EmbeddedResource Include="EmbedLayouts\PollBinaryView.xml" />
+      <None Remove="EmbedLayouts\ErrorView.xml" />
+      <EmbeddedResource Include="EmbedLayouts\ErrorView.xml" />
+      <None Remove="EmbedLayouts\ResponseView.xml" />
+      <EmbeddedResource Include="EmbedLayouts\ResponseView.xml" />
+      <None Remove="EmbedLayouts\TestLayoutView.xml" />
+      <EmbeddedResource Include="EmbedLayouts\TestLayoutView.xml" />
+      <None Remove="EmbedLayouts\PollOptionView.xml" />
+      <EmbeddedResource Include="EmbedLayouts\PollOptionView.xml" />
+      <EmbeddedResource Update="Configuration\PollOptionConfiguration.resx">
+        <Generator>ResXFileCodeGenerator</Generator>
+        <LastGenOutput>PollOptionConfiguration.Designer.cs</LastGenOutput>
+      </EmbeddedResource>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="PollConfiguration" />
+    </ItemGroup>
+
 </Project>

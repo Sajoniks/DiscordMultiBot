@@ -17,6 +17,9 @@ public class PollVote
     [Column("Data"), NotNull]
     public string VoteData { get; set; }
     
+    [Column("VoteOption"), NotNull]
+    public string Option { get; set; }
+    
     [Association(ThisKey = nameof(PollId), OtherKey = nameof(Poll.Id))]
-    public Poll Poll { get; set; }
+    public Poll VotedPoll { get; set; }
 }

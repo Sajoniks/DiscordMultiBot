@@ -4,3 +4,5 @@ _ReSharper.Caches
 obj
 bin
 *.db
+appsettings*
+/src/DiscordMultiBot.App/EmbedLayouts
