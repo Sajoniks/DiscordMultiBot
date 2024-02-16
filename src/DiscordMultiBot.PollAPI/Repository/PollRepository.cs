@@ -35,7 +35,8 @@ public class PollRepository : IPollRepository
             Id: added.Id,
             ChannelId: added.ChannelId,
             Type: (PollType) added.PollType,
-            Options: PollOptions.FromString(added.Options)
+            Options: PollOptions.FromString(added.Options),
+            IsAnonymous: added.IsAnonymous
         );
     }
 
@@ -81,7 +82,8 @@ public class PollRepository : IPollRepository
             Id: p.Id,
             ChannelId: p.ChannelId,
             Type: (PollType)p.PollType,
-            Options: PollOptions.FromString(p.Options)
+            Options: PollOptions.FromString(p.Options),
+            IsAnonymous: p.IsAnonymous
         );
     }
 
@@ -154,7 +156,8 @@ public class PollRepository : IPollRepository
                 ChannelId: r.ChannelId,
                 Type: (PollType) r.PollType,
                 Metadata: m,
-                Options: PollOptions.FromString(r.Options)
+                Options: PollOptions.FromString(r.Options),
+                IsAnonymous: r.IsAnonymous
             );
         }
         else

@@ -6,3 +6,7 @@ bin
 *.db
 appsettings*
 /src/DiscordMultiBot.App/EmbedLayouts
+/src/DiscordMultiBot.App/Configuration
+/src/DiscordMultiBot.App/Tools
+/src/DiscordMultiBot.App/Databases
+/src/DiscordMultiBot.App/Audios

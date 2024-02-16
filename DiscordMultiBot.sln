@@ -8,6 +8,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{FD9694A4
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordMultiBot.PollAPI", "src\DiscordMultiBot.PollAPI\DiscordMultiBot.PollAPI.csproj", "{DD5A80E7-7E69-4F49-A41B-298187AFB4A0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordMultiBot.AudioParser", "src\DiscordMultiBot.AudioParser\DiscordMultiBot.AudioParser.csproj", "{C9E513FF-4B32-4E5E-8132-A0AA2C1614D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -16,6 +18,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{D8E123D9-1B15-4CE1-B908-680B7FEFE02A} = {BDF6AF49-9ABD-48B6-90D6-128595C26F1D}
 		{DD5A80E7-7E69-4F49-A41B-298187AFB4A0} = {BDF6AF49-9ABD-48B6-90D6-128595C26F1D}
+		{C9E513FF-4B32-4E5E-8132-A0AA2C1614D8} = {BDF6AF49-9ABD-48B6-90D6-128595C26F1D}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{D8E123D9-1B15-4CE1-B908-680B7FEFE02A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -26,5 +29,9 @@ Global
 		{DD5A80E7-7E69-4F49-A41B-298187AFB4A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DD5A80E7-7E69-4F49-A41B-298187AFB4A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DD5A80E7-7E69-4F49-A41B-298187AFB4A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9E513FF-4B32-4E5E-8132-A0AA2C1614D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9E513FF-4B32-4E5E-8132-A0AA2C1614D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9E513FF-4B32-4E5E-8132-A0AA2C1614D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9E513FF-4B32-4E5E-8132-A0AA2C1614D8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
