@@ -25,7 +25,7 @@ public partial class VoteModule
             if (poll.Type != PollType.Binary)
             {
                 EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Vote failed", "`/vote yesno` is not appicable to the current poll");
-                await RespondAsync(embeds: e.Embeds, text: e.Text, ephemeral: true);
+                await RespondAsync(embeds: e.Embeds, text: e.Text, components: e.Comps, ephemeral: true);
                 return;
             }
 
@@ -33,7 +33,7 @@ public partial class VoteModule
             {
                 EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Vote failed",
                     $"`{option}` is not a valid option for current poll");
-                await RespondAsync(embeds: e.Embeds, text: e.Text, ephemeral: true);
+                await RespondAsync(embeds: e.Embeds, text: e.Text, components: e.Comps, ephemeral: true);
                 return;
             }
 
@@ -89,25 +89,26 @@ public partial class VoteModule
                         {
                             props.Embeds = e.Embeds;
                             props.Content = e.Text;
+                            props.Components = e.Comps;
                         });
                     }
                 }
 
-                EmbedXmlDoc responseXml = EmbedXmlUtils.CreateResponseEmbed("Vote accepted", $"You have voted for `{option}`");
-                await RespondAsync(embeds: responseXml.Embeds, text: responseXml.Text, ephemeral: true);
+                EmbedXmlDoc responseXml = EmbedXmlUtils.CreateResponseEmbed("Vote accepted", $"You have voted for `{option}` as `{(choice.Equals("true") ? "Yes" : "No")}`");
+                await RespondAsync(embeds: responseXml.Embeds, components: responseXml.Comps, text: responseXml.Text, ephemeral: true);
                 return;
             }
             else
             {
                 EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Vote failed", addVote.Error);
-                await RespondAsync(embeds: e.Embeds, text: e.Text, ephemeral: true);
+                await RespondAsync(embeds: e.Embeds, components: e.Comps, text: e.Text, ephemeral: true);
                 return;
             }
         }
         else
         {
             EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Vote failed", pollQuery.Error);
-            await RespondAsync(embeds: e.Embeds, text: e.Text, ephemeral: true);
+            await RespondAsync(embeds: e.Embeds, components: e.Comps, text: e.Text, ephemeral: true);
             return;
         }
     }

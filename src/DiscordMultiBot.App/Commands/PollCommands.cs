@@ -7,12 +7,9 @@ namespace DiscordMultiBot.App.Commands;
 
 public record CreatePollCommand(ulong ChannelId, string Style, int NumMembers, PollOptions PollOptions, bool IsAnonymous) : ICommand;
 public record DeletePollCommand(ulong ChannelId) : ICommand;
-
 public record UpdatePollMetadataCommand(ulong ChannelId, ulong MessageId) : ICommand;
-public record UpdatePollVoterStateCommand(ulong ChannelId, ulong UserId, PollVoterState State) : ICommand;
-
+public record UpdatePollVoterStateCommand(ulong ChannelId, ulong UserId) : ICommand;
 public record CreatePollVoteCommand(ulong ChannelId, ulong UserId, string VoteOption, string VoteData) : ICommand;
-
 
 public sealed class CreatePollCommandHandler : ICommandHandler<CreatePollCommand, PollDto>
 {
@@ -84,8 +81,7 @@ public sealed class UpdatePollVoterStateCommandHandler : ICommandHandler<UpdateP
     {
         try
         {
-            var r = await _pollRepository.UpdateUserPollVoteStateAsync(command.ChannelId, command.UserId,
-                command.State);
+            var r = await _pollRepository.UpdateUserPollVoteStateAsync(command.ChannelId, command.UserId);
             return ResultDto.CreateOK(r);
         }
         catch (DoesNotExistException)

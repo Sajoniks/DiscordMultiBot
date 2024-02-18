@@ -27,11 +27,13 @@ public partial class PollModule : InteractionModuleBase<SocketInteractionContext
         [Choice("YesNo", nameof(PollType.Binary)), Choice("Preference", nameof(PollType.Numeric))] string style
     )
     {
+        
+        
         var options = PollOptions.FromString(optionsString);
         if (options.Count == 0)
         {
             var e = EmbedXmlUtils.CreateErrorEmbed("Create poll failed", "Options empty");
-            await RespondAsync(text: e.Text, embeds: e.Embeds, ephemeral: true);
+            await RespondAsync(text: e.Text, embeds: e.Embeds, components: e.Comps, ephemeral: true);
             return;
         }
         else if (options.Count == 1)
@@ -65,20 +67,20 @@ public partial class PollModule : InteractionModuleBase<SocketInteractionContext
             else
             {
                 EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Create poll failed", "Unknown poll type");
-                await RespondAsync(text: e.Text, embeds: e.Embeds, ephemeral: true);
+                await RespondAsync(text: e.Text, embeds: e.Embeds, components: e.Comps, ephemeral: true);
                 return;
             }
 
-            EmbedXmlDoc embed = creator.Create(layout);
-            await RespondAsync(text: embed.Text, embeds: embed.Embeds);
+            await RespondAsync(text: "Creating poll...");
             
-            var m = await GetOriginalResponseAsync();
+            EmbedXmlDoc embed = creator.Create(layout);
+            var m = await Context.Channel.SendMessageAsync(text: embed.Text, components: embed.Comps, embeds: embed.Embeds);
             await _dispatcher.ExecuteAsync(new UpdatePollMetadataCommand(Context.Channel.Id, m.Id));
         }
         else
         {
             EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Create poll failed", r.Error);
-            await RespondAsync(text: e.Text, embeds: e.Embeds, ephemeral: true);
+            await RespondAsync(text: e.Text, components: e.Comps, embeds: e.Embeds, ephemeral: true);
         }
     }
 
@@ -103,7 +105,7 @@ public partial class PollModule : InteractionModuleBase<SocketInteractionContext
         {
             e = EmbedXmlUtils.CreateErrorEmbed("Failed to delete polls", r.Error);
         }
-        await RespondAsync(text: e.Text, embeds: e.Embeds, ephemeral: true);
+        await RespondAsync(text: e.Text, components: e.Comps, embeds: e.Embeds, ephemeral: true);
     }
 
     [SlashCommand("complete", "Complete a poll in a current channel")]

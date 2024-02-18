@@ -51,6 +51,7 @@ public class EmbedXmlCreator : IEmbedXmlCreator
             doc.Load(stream);
         }
 
+        var comps = new ComponentBuilder();
         var embedBuilder = new EmbedBuilder();
         XmlElement? xRoot = doc.DocumentElement;
 
@@ -112,7 +113,7 @@ public class EmbedXmlCreator : IEmbedXmlCreator
         foreach (XmlNode xNode in xRoot)
         {
             XmlNode? xId = xNode.Attributes?.GetNamedItem("Id");
-            if (xNode.Name.Equals("Element") && xId?.Value != null)
+            if ((xNode.Name.Equals("Element") || xNode.Name.Equals("Button")) && xId?.Value != null)
             {
                 string bindingValue = "";
                 string id = xId.Value;
@@ -143,6 +144,15 @@ public class EmbedXmlCreator : IEmbedXmlCreator
                     else if (id.Equals("Text"))
                     {
                         sbText.AppendLine(bindingValue);
+                    }
+                    else if (xNode.Name.Equals("Button"))
+                    {
+                        var button = new ButtonBuilder()
+                            .WithStyle(ButtonStyle.Success)
+                            .WithCustomId(id)
+                            .WithLabel(bindingValue);
+
+                        comps.WithButton(button);
                     }
                 }
             }
@@ -192,7 +202,8 @@ public class EmbedXmlCreator : IEmbedXmlCreator
         
         return new EmbedXmlDoc(
             Text: sbText.ToString(),
-            Embeds: new[] { embedBuilder.Build() }
+            Embeds: new[] { embedBuilder.Build() },
+            Comps: comps.Build()
         );
     }
 }

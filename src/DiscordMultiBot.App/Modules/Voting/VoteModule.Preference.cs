@@ -26,7 +26,7 @@ public partial class VoteModule
             {
                 EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Vote failed",
                     "`/vote pref` is not applicable to the current poll");
-                await RespondAsync(embeds: e.Embeds, text: e.Text, ephemeral: true);
+                await RespondAsync(embeds: e.Embeds, components: e.Comps, text: e.Text, ephemeral: true);
                 return;
             }
 
@@ -86,21 +86,21 @@ public partial class VoteModule
                     }
                 }
 
-                EmbedXmlDoc responseXml = EmbedXmlUtils.CreateResponseEmbed("Vote accepted", $"You have voted for `{option}`");
-                await RespondAsync(embeds: responseXml.Embeds, text: responseXml.Text, ephemeral: true);
+                EmbedXmlDoc responseXml = EmbedXmlUtils.CreateResponseEmbed("Vote accepted", $"You have voted for `{option}` for `{preference}`");
+                await RespondAsync(embeds: responseXml.Embeds, components: responseXml.Comps, text: responseXml.Text, ephemeral: true);
                 return;
             }
             else
             {
                 EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Vote failed", addVote.Error);
-                await RespondAsync(embeds: e.Embeds, text: e.Text, ephemeral: true);
+                await RespondAsync(embeds: e.Embeds, components: e.Comps, text: e.Text, ephemeral: true);
                 return;
             }
         }
         else
         {
             EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Vote failed", pollQuery.Error);
-            await RespondAsync(embeds: e.Embeds, text: e.Text, ephemeral: true);
+            await RespondAsync(embeds: e.Embeds, components: e.Comps, text: e.Text, ephemeral: true);
             return;
         }
     }

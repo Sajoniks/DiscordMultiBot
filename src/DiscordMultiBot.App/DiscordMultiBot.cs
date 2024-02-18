@@ -27,8 +27,21 @@ public sealed class DiscordMultiBot
         _bot.Ready += BotOnReady;
         _bot.MessageReceived += BotOnMessageReceived;
         _bot.Log += BotOnLog;
+        _interactionService.Log += InteractionServiceOnLog;
+    }
+
+    private Task BotOnLog(LogMessage arg)
+    {
+        Console.WriteLine(arg);
+        return Task.CompletedTask;
     }
     
+    private Task InteractionServiceOnLog(LogMessage arg)
+    {
+        Console.WriteLine(arg);
+        return Task.CompletedTask;
+    }
+
     public IConfiguration Configuration { get; }
     public IServiceProvider Services { get; }
 
@@ -37,7 +50,7 @@ public sealed class DiscordMultiBot
         await _interactionService.AddModulesAsync(Assembly.GetExecutingAssembly(), Services);
         await _bot.LoginAsync(TokenType.Bot, Configuration["Discord:Bot:Token"]);
         await _bot.StartAsync();
-
+        
         await Task.Delay(-1);
     }
 
@@ -45,12 +58,6 @@ public sealed class DiscordMultiBot
     {
         var ctx = new SocketInteractionContext(_bot, arg);
         await _interactionService.ExecuteCommandAsync(ctx, Services);
-    }
-
-    private Task BotOnLog(LogMessage arg)
-    {
-        Console.WriteLine(arg);
-        return Task.CompletedTask;
     }
 
     private Task BotOnMessageReceived(SocketMessage arg)

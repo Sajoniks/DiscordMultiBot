@@ -30,6 +30,7 @@
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Remove="Audios\**" />
+      <None Remove="Databases\**" />
     </ItemGroup>
 
     <ItemGroup>
@@ -56,6 +57,7 @@
         <LastGenOutput>PollOptionConfiguration.Designer.cs</LastGenOutput>
       </EmbeddedResource>
       <EmbeddedResource Remove="Audios\**" />
+      <EmbeddedResource Remove="Databases\**" />
     </ItemGroup>
 
     <ItemGroup>
@@ -67,10 +69,16 @@
 
     <ItemGroup>
       <Compile Remove="Audios\**" />
+      <Compile Remove="Databases\**" />
     </ItemGroup>
 
-    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-      <Exec Command="dotnet publish $(SolutionDir)src\DiscordMultiBot.AudioParser\DiscordMultiBot.AudioParser.csproj -o $(ProjectDir)Tools\AudioParser --self-contained -v n -a x64  --use-current-runtime -c Release -p:PublishSingleFile=true -p:DebugType=embedded -p:PublishTrimmed=true&#xA;$(ProjectDir)Tools\AudioParser\audioparser.exe -i $(TargetDir)Audios\ -o $(TargetDir)Configuration\audiosettings.json&#xA;xcopy $(ProjectDir)Audios\ $(TargetDir)Audios\ /E /V /F /H /N /D" />
-    </Target>
+    <ItemGroup>
+      <Content Include="..\..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
+      <Content Include="..\..\Dockerfile">
+        <Link>Dockerfile</Link>
+      </Content>
+    </ItemGroup>
 
 </Project>

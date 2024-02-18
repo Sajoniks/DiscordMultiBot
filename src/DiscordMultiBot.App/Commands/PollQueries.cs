@@ -6,10 +6,10 @@ using DiscordMultiBot.PollService.Repository;
 namespace DiscordMultiBot.App.Commands;
 
 public record GetCurrentPollQuery(ulong ChannelId) : IQuery;
-
 public record GetCurrentPollMetadata(ulong ChannelId) : IQuery;
-
 public record GetCurrentPollResults(ulong ChannelId) : IQuery;
+public record GetNumVotes(ulong ChannelId) : IQuery;
+
 
 public sealed class GetCurrentPollQueryHandler : IQueryHandler<GetCurrentPollQuery, PollDto>
 {
@@ -69,5 +69,21 @@ public sealed class GetCurrentPollResultsQueryHandler : IQueryHandler<GetCurrent
     public async Task<ResultDto<IEnumerable<PollVoteResultDto>>> AskAsync(GetCurrentPollResults query)
     {
         return ResultDto.CreateOK(await _repository.GetPollResultsByChannelAsync(query.ChannelId));
+    }
+}
+
+public sealed class GetNumVotesQueryHandler : IQueryHandler<GetNumVotes, int>
+{
+    private readonly IPollRepository _repository;
+
+    public GetNumVotesQueryHandler(IPollRepository repository)
+    {
+        _repository = repository;
+    }
+
+    
+    public async Task<ResultDto<int>> AskAsync(GetNumVotes query)
+    {
+        return ResultDto.CreateOK(await _repository.GetNumReadyAsync(query.ChannelId));
     }
 }

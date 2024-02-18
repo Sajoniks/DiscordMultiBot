@@ -93,5 +93,5 @@ public enum PollType
     Binary
 }
 
-public record PollDto(ulong Id, ulong ChannelId, PollType Type, PollOptions Options, bool IsAnonymous, PollMetadataDto? Metadata = null);
+public record PollDto(ulong Id, ulong ChannelId, PollType Type, PollOptions Options, bool IsAnonymous, int NumMembers, PollMetadataDto? Metadata = null);
 public record PollMetadataDto(ulong ChannelId, ulong MessageId);

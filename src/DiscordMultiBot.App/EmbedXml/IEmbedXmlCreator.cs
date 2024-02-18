@@ -2,7 +2,7 @@
 
 namespace DiscordMultiBot.App.EmbedXml;
 
-public record EmbedXmlDoc(string Text, Embed[] Embeds);
+public record EmbedXmlDoc(string Text, Embed[] Embeds, MessageComponent Comps);
 
 public interface IEmbedXmlCreator
 {

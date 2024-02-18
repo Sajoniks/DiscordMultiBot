@@ -23,30 +23,46 @@ public partial class PollModule
             await Context.Channel.SendMessageAsync(text: errEmbed.Text, embeds: errEmbed.Embeds);
             return;
         }
-        
-        var resultGroups = resultList.GroupBy(x => x.Vote.VoteOption);
 
-        SortedDictionary<string, int> optionCounts = new();
+        var resultGroups = resultList
+            .GroupBy(x => x.Vote.VoteOption)
+            .Select(x => (x.Key, Items: x.AsEnumerable(), Yes: x.Count(y => y.Data.Value),
+                No: x.Count(y => !y.Data.Value)))
+            .OrderByDescending(x => x.Yes - x.No)
+            .ToList();
+        
         EmbedXmlCreator resultXml = new();
 
         foreach (var resultGroup in resultGroups)
         {
-            var votedUsers = String.Join(", ", resultGroup
-                .Select(x => (User: Context.Guild.GetUser(x.Vote.UserId), Data: x.Data))
-                .Select(x => $"{x.User.DisplayName} (@{x.User.Username}) - {(x.Data.Value ? "Yes" : "No")}"));
-            
-            resultXml.Fields.Add(new EmbedXmlField($"`{resultGroup.Key}`", votedUsers));
+            var votedUsers = String.Join("\n", resultGroup.Items.Select(x => $"{Context.Guild.GetUser(x.Vote.UserId).Username} ({(x.Data.Value ? "Yes" : "No")})"));
 
-            optionCounts.TryAdd(resultGroup.Key, 0);
-            optionCounts[resultGroup.Key] = resultGroup.Sum(x => x.Data.Value ? 1 : -1);
+            var resultKeySb = new StringBuilder();
+            resultKeySb.AppendFormat("`{0}` - ", resultGroup.Key);
+            if (resultGroup.Yes != 0)
+            {
+                resultKeySb.AppendFormat("{0} Yes", resultGroup.Yes);
+                if (resultGroup.No != 0)
+                {
+                    resultKeySb.Append(", ");
+                }
+            }
+
+            if (resultGroup.No != 0)
+            {
+                resultKeySb.AppendFormat("{0} No", resultGroup.No);
+            }
+
+            resultXml.Fields.Add(new EmbedXmlField(resultKeySb.ToString(), votedUsers));
         }
 
-        var option = optionCounts
-            .TakeWhile(x => x.Value == optionCounts.First().Value)
-            .MaxBy(_ => Random.Shared.Next());
+        string option = resultGroups
+            .TakeWhile(x => (x.Yes - x.No) == (resultGroups[0].Yes - resultGroups[0].No))
+            .MaxBy(_ => Random.Shared.Next())
+            .Key;
 
         var optionXml = new EmbedXmlCreator();
-        optionXml.Bindings.Add("Option", option.Key);
+        optionXml.Bindings.Add("Option", option);
         optionXml.Bindings.Add("Color", "ffaabb");
         
         EmbedXmlDoc optionEmbed = optionXml.Create("PollOption");
@@ -71,30 +87,28 @@ public partial class PollModule
             await Context.Channel.SendMessageAsync(text: errEmbed.Text, embeds: errEmbed.Embeds);
             return;
         }
-        
-        var resultGroups = resultList.GroupBy(x => x.Vote.VoteOption);
 
-        SortedDictionary<string, int> optionCounts = new();
+        var resultGroups = resultList
+            .GroupBy(x => x.Vote.VoteOption)
+            .Select(x => (x.Key, Items: x.AsEnumerable(), Sum: x.Sum(y => y.Data.Preference)))
+            .OrderByDescending(x => x.Sum)
+            .ToList();
+
         EmbedXmlCreator resultXml = new();
 
         foreach (var resultGroup in resultGroups)
         {
-            var votedUsers = String.Join(", ", resultGroup
-                .Select(x => (User: Context.Guild.GetUser(x.Vote.UserId), Data: x.Data))
-                .Select(x => $"{x.User.DisplayName} (@{x.User.Username}) - {x.Data.Preference}"));
-            
-            resultXml.Fields.Add(new EmbedXmlField($"`{resultGroup.Key}`", votedUsers));
-
-            optionCounts.TryAdd(resultGroup.Key, 0);
-            optionCounts[resultGroup.Key] = resultGroup.Sum(x => x.Data.Preference);
+            var votedUsers = String.Join("\n", resultGroup.Items.Select(x => $"{Context.Guild.GetUser(x.Vote.UserId).Username} ({x.Data.Preference})"));
+            resultXml.Fields.Add(new EmbedXmlField($"`{resultGroup.Key}` - {resultGroup.Sum}", votedUsers));
         }
 
-        var option = optionCounts
-            .TakeWhile(x => x.Value == optionCounts.First().Value)
-            .MaxBy(_ => Random.Shared.Next());
+        string option = resultGroups
+            .TakeWhile(x => x.Sum == resultGroups[0].Sum)
+            .MaxBy(_ => Random.Shared.Next())
+            .Key;
 
         var optionXml = new EmbedXmlCreator();
-        optionXml.Bindings.Add("Option", option.Key);
+        optionXml.Bindings.Add("Option", option);
         optionXml.Bindings.Add("Color", "ffaabb");
         
         EmbedXmlDoc optionEmbed = optionXml.Create("PollOption");

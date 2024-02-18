@@ -25,11 +25,14 @@ public interface IPollRepository : IRepository
 
     ///<exception cref="DoesNotExistException">Poll does not exist</exception>
     public Task<PollDto> DeletePollByChannelAsync(ulong channelId);
+
+    public Task<int> GetNumReadyAsync(ulong channelId);
     
     
     ///<exception cref="DoesNotExistException">Poll does not exist</exception>
     public Task<PollVoteDto> CreateUserVoteInPollAsync(ulong channelId, ulong userId, string voteOption, string voteData);
+
     ///<exception cref="DoesNotExistException">Poll or vote does not exist</exception>
-    public Task<PollVoterStateDto> UpdateUserPollVoteStateAsync(ulong channelId, ulong userId, PollVoterState state);
+    public Task<PollVoterStateDto> UpdateUserPollVoteStateAsync(ulong channelId, ulong userId);
     public Task<IEnumerable<PollVoteResultDto>> GetPollResultsByChannelAsync(ulong channelId);
 }

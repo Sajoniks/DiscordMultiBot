@@ -36,6 +36,7 @@ public class PollRepository : IPollRepository
             ChannelId: added.ChannelId,
             Type: (PollType) added.PollType,
             Options: PollOptions.FromString(added.Options),
+            NumMembers: added.NumMembers,
             IsAnonymous: added.IsAnonymous
         );
     }
@@ -83,6 +84,7 @@ public class PollRepository : IPollRepository
             ChannelId: p.ChannelId,
             Type: (PollType)p.PollType,
             Options: PollOptions.FromString(p.Options),
+            NumMembers: p.NumMembers,
             IsAnonymous: p.IsAnonymous
         );
     }
@@ -157,6 +159,7 @@ public class PollRepository : IPollRepository
                 Type: (PollType) r.PollType,
                 Metadata: m,
                 Options: PollOptions.FromString(r.Options),
+                NumMembers: r.NumMembers,
                 IsAnonymous: r.IsAnonymous
             );
         }
@@ -227,9 +230,27 @@ public class PollRepository : IPollRepository
         );
     }
 
+    public async Task<int> GetNumReadyAsync(ulong channelId)
+    {
+        var p = await _db.Polls
+            .Where(x => x.ChannelId == channelId)
+            .FirstOrDefaultAsync();
+        
+        if (p is null)
+        {
+            throw new DoesNotExistException();
+        }
+
+        var r = _db.FromSql<int>("SELECT COUNT(*) FROM VoterStates WHERE VoterState={0} AND PollID={1}}",
+            (int)PollVoterState.Ready,
+            p.Id
+        );
+
+        return r.First();
+    }
+
     ///<inheritdoc/>
-    public async Task<PollVoterStateDto> UpdateUserPollVoteStateAsync(ulong channelId, ulong userId,
-        PollVoterState state)
+    public async Task<PollVoterStateDto> UpdateUserPollVoteStateAsync(ulong channelId, ulong userId)
     {
         var p = await _db.Polls
             .Where(x => x.ChannelId == channelId)
@@ -241,25 +262,29 @@ public class PollRepository : IPollRepository
         }
         
         var r = await _db.VoterStates
-            .Where(x => x.PollId == channelId && x.UserId == userId)
+            .Where(x => x.PollId == p.Id && x.UserId == userId)
             .FirstOrDefaultAsync();
 
         if (r is not null)
         {
-            r.State = (int)state;
+            r.State = (r.State + 1) % 2;
             await _db.UpdateAsync(r);
-
-            return new PollVoterStateDto(
-                Id: r.Id,
-                UserId: r.UserId,
-                PollId: r.PollId,
-                VoterState: (PollVoterState)r.State
-            );
         }
         else
         {
-            throw new DoesNotExistException();
+            r = await _db.VoterStates
+                .Value(x => x.State, (int)PollVoterState.Ready)
+                .Value(x => x.UserId, userId)
+                .Value(x => x.PollId, p.Id)
+                .InsertWithOutputAsync();
         }
+        
+        return new PollVoterStateDto(
+            Id: r.Id,
+            UserId: r.UserId,
+            PollId: r.PollId,
+            VoterState: (PollVoterState)r.State
+        );
     }
 
     ///<inheritdoc/>

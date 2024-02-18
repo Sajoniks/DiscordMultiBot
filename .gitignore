@@ -5,6 +5,7 @@ obj
 bin
 *.db
 appsettings*
+publish
 /src/DiscordMultiBot.App/EmbedLayouts
 /src/DiscordMultiBot.App/Configuration
 /src/DiscordMultiBot.App/Tools
