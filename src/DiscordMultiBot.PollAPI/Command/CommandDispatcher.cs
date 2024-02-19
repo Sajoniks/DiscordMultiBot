@@ -1,4 +1,5 @@
-﻿using DiscordMultiBot.PollService.Data.Dto;
+﻿using System.Reflection;
+using DiscordMultiBot.PollService.Data.Dto;
 using DiscordMultiBot.PollService.Data.Entity;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,21 +14,32 @@ public class CommandDispatcher
         _provider = provider;
     }
 
-    public Task<ResultDto<TResult>> ExecuteAsync<TCommand, TResult>(TCommand command) where TCommand : ICommand
+    public Task<ResultDto<TResult>> ExecuteAsync<TResult>(ICommand<TResult> command)
     {
-        var handler = _provider.GetRequiredService<ICommandHandler<TCommand, TResult>>();
-        return handler.ExecuteAsync(command);
+        var commandType = command.GetType();
+        var resultType = typeof(TResult);
+        
+        var handlerType = typeof(ICommandHandler<,>).MakeGenericType(commandType, resultType);
+        var handler = _provider.GetRequiredService(handlerType);
+        var r = handlerType.GetMethod("ExecuteAsync")!.Invoke(handler, new object?[] { command })!;
+        return (Task<ResultDto<TResult>>)r;
     }
 
-    public Task<ResultDto> ExecuteAsync<TCommand>(TCommand command) where TCommand : ICommand
+    public Task<ResultDto> ExecuteAsync(ICommand command)
     {
-        var handler = _provider.GetRequiredService<ICommandHandler<TCommand>>();
-        return handler.ExecuteAsync(command);
+        var commandType = command.GetType();
+        
+        var handlerType = typeof(ICommandHandler<>).MakeGenericType(commandType);
+        var handler = _provider.GetRequiredService(handlerType);
+        var r = handlerType.GetMethod("ExecuteAsync")!.Invoke(handler, new object?[] { command })!;
+        return (Task<ResultDto>)r;
     }
 
-    public Task<ResultDto<TResult>> QueryAsync<TQuery, TResult>(TQuery query) where TQuery : IQuery
+    public Task<ResultDto<TResult>> QueryAsync<TResult>(IQuery<TResult> query)
     {
-        var handler = _provider.GetRequiredService<IQueryHandler<TQuery, TResult>>();
-        return handler.AskAsync(query);
+        var handlerType = typeof(IQueryHandler<,>).MakeGenericType(query.GetType(), typeof(TResult));
+        var handler = _provider.GetRequiredService(handlerType);
+        var r = handlerType.GetMethod("AskAsync")!.Invoke(handler, new object?[] { query })!;
+        return (Task<ResultDto<TResult>>)r;
     }
 }

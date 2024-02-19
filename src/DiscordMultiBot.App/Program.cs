@@ -1,5 +1,4 @@
-﻿using System.Text;
-using DiscordMultiBot.App;
+﻿using DiscordMultiBot.App;
 using DiscordMultiBot.App.Extensions;
 using DiscordMultiBot.PollService.Extensions;
 

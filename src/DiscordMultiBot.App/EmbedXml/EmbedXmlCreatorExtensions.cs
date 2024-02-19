@@ -19,4 +19,14 @@ public static class EmbedXmlUtils
         creator.Bindings.Add("Desc", desc);
         return creator.Create("Response");
     }
+
+    public static Task<IUserMessage> SendMessageFromXmlAsync(this EmbedXmlDoc doc, IMessageChannel channel)
+    {
+        return channel.SendMessageAsync(text: doc.Text, embeds: doc.Embeds, components: doc.Comps);
+    }
+
+    public static Task RespondFromXmlAsync(this EmbedXmlDoc doc, IInteractionContext context, bool ephemeral = false)
+    {
+        return context.Interaction.RespondAsync(text: doc.Text, embeds: doc.Embeds, components: doc.Comps, ephemeral: ephemeral);
+    }
 }

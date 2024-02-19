@@ -1,7 +1,10 @@
 ﻿using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
+using DiscordMultiBot.App.Commands;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace DiscordMultiBot.App;
 
@@ -38,6 +41,20 @@ public sealed class DiscordMultiBotBuilder
                     Configuration.AddJsonFile(jsonPath);
                 }
             }
+            
+            string pollVotesConfigName = "pollVoteSettings.json";
+            string pollVotesConfigPath = Path.GetFullPath(Path.Combine("Configuration", pollVotesConfigName), currPath);
+            Configuration.AddJsonFile(pollVotesConfigPath);
+
+            string audioConfigName = "audiosettings.json";
+            string audioConfigPath = Path.GetFullPath(Path.Combine("Configuration", audioConfigName), currPath);
+            Configuration.AddJsonFile(audioConfigPath);
+        }
+
+        string? maintance = Environment.GetEnvironmentVariable("BOT_MAINTANCE");
+        if (maintance is not null)
+        {
+            // @todo
         }
 
         
@@ -54,6 +71,25 @@ public sealed class DiscordMultiBotBuilder
 
     public DiscordMultiBot Build()
     {
+        Services
+            .AddSingleton(_ =>
+            {
+                var botCommands = new ServiceCollection();
+
+                botCommands
+                    .Add(Services)
+                    //--------------------------------------------------
+                    // Command handlers
+                    //
+                    .AddTransient<ISocketBotCommandHandler<CompletePollBotCommand>, CompletePollBotCommandHandler>()
+                    .AddTransient<ISocketBotCommandHandler<WritePollResultsBotCommand>, WritePollResultsCommandHandler>()
+                    .AddTransient<ISocketBotCommandHandler<UpdatePollMessageBotCommand>, UpdatePollMessageCommandHandler>()
+                    .AddTransient<ISocketBotCommandHandler<MakePollVoteBotCommand>, MakePollVoteCommandHandler>()
+                    .AddTransient<ISocketBotCommandHandler<ClearPollBotCommand>, ClearPollCommandHandler>()
+                    .AddTransient<ISocketBotCommandHandler<CreatePollBotCommand>, CreatePollBotCommandHandler>();
+
+                return new BotCommandDispatcher(botCommands.BuildServiceProvider());
+            });
         return new DiscordMultiBot(Configuration.Build(), Services.BuildServiceProvider());
     }
     

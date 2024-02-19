@@ -1,15 +1,16 @@
 ﻿using DiscordMultiBot.PollService.Command;
 using DiscordMultiBot.PollService.Data.Dto;
-using DiscordMultiBot.PollService.Data.Entity;
 using DiscordMultiBot.PollService.Repository;
 
 namespace DiscordMultiBot.App.Commands;
 
-public record CreatePollCommand(ulong ChannelId, string Style, int NumMembers, PollOptions PollOptions, bool IsAnonymous) : ICommand;
-public record DeletePollCommand(ulong ChannelId) : ICommand;
+public record CreatePollCommand(ulong ChannelId, string Style, int NumMembers, PollOptions PollOptions, bool IsAnonymous) : ICommand<PollDto>;
+public record DeletePollCommand(ulong ChannelId) : ICommand<PollDto>;
+public record UpdatePollVoterStateCommand(ulong ChannelId, ulong UserId) : ICommand<PollVoterStateDto>;
 public record UpdatePollMetadataCommand(ulong ChannelId, ulong MessageId) : ICommand;
-public record UpdatePollVoterStateCommand(ulong ChannelId, ulong UserId) : ICommand;
 public record CreatePollVoteCommand(ulong ChannelId, ulong UserId, string VoteOption, string VoteData) : ICommand;
+public record CreatePollOptionsTemplateCommand(ulong GuildId, string Name, PollOptions Options) : ICommand;
+public record DeletePollOptionsTemplateCommand(ulong GuildId, string Name) : ICommand;
 
 public sealed class CreatePollCommandHandler : ICommandHandler<CreatePollCommand, PollDto>
 {
@@ -41,6 +42,29 @@ public sealed class CreatePollCommandHandler : ICommandHandler<CreatePollCommand
         catch (AlreadyExistsException)
         {
             return ResultDto.CreateError<PollDto>("Poll already exists");
+        }
+    }
+}
+
+public sealed class DeletePollOptionsTemplateCommandHandler : ICommandHandler<DeletePollOptionsTemplateCommand>
+{
+    private IPollRepository _pollRepository;
+
+    public DeletePollOptionsTemplateCommandHandler(IPollRepository pollRepository)
+    {
+        _pollRepository = pollRepository;
+    }
+
+    public async Task<ResultDto> ExecuteAsync(DeletePollOptionsTemplateCommand command)
+    {
+        try
+        {
+            await _pollRepository.DeletePollTemplateAsync(command.GuildId, command.Name);
+            return ResultDto.CreateOK();
+        }
+        catch (Exception)
+        {
+            return ResultDto.CreateError("Failed to delete template");
         }
     }
 }
@@ -94,8 +118,13 @@ public sealed class UpdatePollVoterStateCommandHandler : ICommandHandler<UpdateP
 public sealed class UpdatePollMetadataCommandHandler : ICommandHandler<UpdatePollMetadataCommand>
 {
     private readonly IPollRepository _pollRepository;
+    private readonly IQueryHandler<GetCurrentPollQuery, PollDto> _getPollQuery;
 
-    public UpdatePollMetadataCommandHandler(IPollRepository pollRepository)
+
+    public UpdatePollMetadataCommandHandler(
+        IPollRepository pollRepository, 
+        IQueryHandler<GetCurrentPollQuery, PollDto> pollQuery
+    )
     {
         _pollRepository = pollRepository;
     }
@@ -111,6 +140,28 @@ public sealed class UpdatePollMetadataCommandHandler : ICommandHandler<UpdatePol
         catch (DoesNotExistException)
         {
             return ResultDto.CreateError("Poll does not exist");
+        }
+    }
+}
+
+public sealed class CreatePollOptionsTemplateCommandHandler : ICommandHandler<CreatePollOptionsTemplateCommand>
+{
+    private readonly IPollRepository _pollRepository;
+    public CreatePollOptionsTemplateCommandHandler(IPollRepository pollRepository)
+    {
+        _pollRepository = pollRepository;
+    }
+
+    public async Task<ResultDto> ExecuteAsync(CreatePollOptionsTemplateCommand command)
+    {
+        try
+        {
+            await _pollRepository.CreatePollTemplateAsync(command.GuildId, command.Name, command.Options);
+            return ResultDto.CreateOK();
+        }
+        catch (Exception)
+        {
+            return ResultDto.CreateError("Failed to create template"); 
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace DiscordMultiBot.PollService.Command;
 
-public interface IQuery
+public interface IQuery<TResult>
 {
     
 }

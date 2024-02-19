@@ -1,9 +1,9 @@
 ﻿using DiscordMultiBot.PollService.Data.Dto;
-using DiscordMultiBot.PollService.Data.Entity;
 
 namespace DiscordMultiBot.PollService.Command;
 
-public interface IQueryHandler<TQuery, TResult> where TQuery : IQuery
+
+public interface IQueryHandler<TQuery, TResult> where TQuery : IQuery<TResult>
 {
-    Task<ResultDto<TResult>> AskAsync(TQuery query);
+    public Task<ResultDto<TResult>> AskAsync(TQuery query);
 }

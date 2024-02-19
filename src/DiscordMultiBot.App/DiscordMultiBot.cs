@@ -15,7 +15,22 @@ public sealed class DiscordMultiBot
 {
     private InteractionService _interactionService;
     private DiscordSocketClient _bot;
-    
+
+    private static DiscordMultiBot? _botApp;
+
+    public static DiscordMultiBot Instance
+    {
+        get
+        {
+            if (_botApp is null)
+            {
+                throw new NullReferenceException();
+            }
+
+            return _botApp;
+        }
+    }
+
     public DiscordMultiBot(IConfiguration configuration, IServiceProvider services)
     {
         Configuration = configuration;
@@ -28,6 +43,7 @@ public sealed class DiscordMultiBot
         _bot.MessageReceived += BotOnMessageReceived;
         _bot.Log += BotOnLog;
         _interactionService.Log += InteractionServiceOnLog;
+        _botApp = this;
     }
 
     private Task BotOnLog(LogMessage arg)

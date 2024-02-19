@@ -13,10 +13,12 @@ namespace DiscordMultiBot.App.Modules.Poll;
 public partial class PollModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly CommandDispatcher _dispatcher;
+    private readonly BotCommandDispatcher _botDispatcher;
     
-    public PollModule(CommandDispatcher dispatcher)
+    public PollModule(CommandDispatcher dispatcher, BotCommandDispatcher botDispatcher)
     {
         _dispatcher = dispatcher;
+        _botDispatcher = botDispatcher;
     }
     
     [SlashCommand("create", "Start a poll in a current channel")]
@@ -27,114 +29,73 @@ public partial class PollModule : InteractionModuleBase<SocketInteractionContext
         [Choice("YesNo", nameof(PollType.Binary)), Choice("Preference", nameof(PollType.Numeric))] string style
     )
     {
-        
-        
         var options = PollOptions.FromString(optionsString);
         if (options.Count == 0)
         {
-            var e = EmbedXmlUtils.CreateErrorEmbed("Create poll failed", "Options empty");
-            await RespondAsync(text: e.Text, embeds: e.Embeds, components: e.Comps, ephemeral: true);
+            await EmbedXmlUtils
+                .CreateErrorEmbed("Create poll failed", "Options empty")
+                .RespondFromXmlAsync(Context, ephemeral: true);
+            
             return;
         }
-        else if (options.Count == 1)
-        {
-            // Finish the poll
-            return;
-        }
-        
-        var command =
-            new CreatePollCommand(
-                ChannelId: Context.Channel.Id, 
-                Style: style, 
-                NumMembers: participants, 
-                PollOptions: options, 
-                IsAnonymous: isAnonymous
-            );
 
-        var r = await _dispatcher.ExecuteAsync<CreatePollCommand, PollDto>(command);
-        if (r.IsOK)
+        var r = await _botDispatcher.ExecuteAsync(Context, new CreatePollBotCommand(
+            PollOptions: PollOptions.FromString(optionsString),
+            NumMembers: participants,
+            IsAnonymous: isAnonymous,
+            Type: style)
+        );
+
+        if (!Context.Interaction.HasResponded)
         {
-            var creator = new EmbedXmlCreator();
-            string layout;
-            if (style.Equals(nameof(PollType.Binary)))
+            if (r.IsOK)
             {
-                layout = "PollBinary";
-            }
-            else if (style.Equals(nameof(PollType.Numeric)))
-            {
-                layout = "PollNumeric";
+                await EmbedXmlUtils
+                    .CreateResponseEmbed("Poll created", $"Poll in channel {Context.Channel} was successfully created")
+                    .RespondFromXmlAsync(Context);
             }
             else
             {
-                EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Create poll failed", "Unknown poll type");
-                await RespondAsync(text: e.Text, embeds: e.Embeds, components: e.Comps, ephemeral: true);
-                return;
+                await EmbedXmlUtils
+                    .CreateErrorEmbed("Poll creation error", r.Error)
+                    .RespondFromXmlAsync(Context, ephemeral: true);
             }
-
-            await RespondAsync(text: "Creating poll...");
-            
-            EmbedXmlDoc embed = creator.Create(layout);
-            var m = await Context.Channel.SendMessageAsync(text: embed.Text, components: embed.Comps, embeds: embed.Embeds);
-            await _dispatcher.ExecuteAsync(new UpdatePollMetadataCommand(Context.Channel.Id, m.Id));
-        }
-        else
-        {
-            EmbedXmlDoc e = EmbedXmlUtils.CreateErrorEmbed("Create poll failed", r.Error);
-            await RespondAsync(text: e.Text, components: e.Comps, embeds: e.Embeds, ephemeral: true);
         }
     }
 
     [SlashCommand("clear", "Clear all polls in a current channel, without completion")]
     public async Task ClearPollAsync()
     {
-        var command = new DeletePollCommand(Context.Channel.Id);
-
-        var r = await _dispatcher.ExecuteAsync<DeletePollCommand, PollDto>(command);
-        EmbedXmlDoc e;
-        if (r.IsOK)
+        var r = await _botDispatcher.ExecuteAsync(Context, new ClearPollBotCommand());
+        if (!Context.Interaction.HasResponded)
         {
-            e = EmbedXmlUtils.CreateResponseEmbed("Deleted poll", "Polls in channel were deleted"); 
-            if (r.Result?.Metadata is not null)
+            if (!r.IsOK)
             {
-               _ = Context.Channel
-                    .GetMessageAsync(r.Result.Metadata.MessageId)
-                    .ContinueWith(ms => ms.Result?.DeleteAsync());
+                await EmbedXmlUtils
+                    .CreateErrorEmbed("Failed to clear polls", r.Error)
+                    .RespondFromXmlAsync(Context);
+            }
+            else
+            {
+                await EmbedXmlUtils
+                    .CreateResponseEmbed("Polls were deleted", "Deleted all polls from the current channel")
+                    .RespondFromXmlAsync(Context);
             }
         }
-        else
-        {
-            e = EmbedXmlUtils.CreateErrorEmbed("Failed to delete polls", r.Error);
-        }
-        await RespondAsync(text: e.Text, components: e.Comps, embeds: e.Embeds, ephemeral: true);
     }
 
     [SlashCommand("complete", "Complete a poll in a current channel")]
     public async Task CompletePollAsync()
     {
-        var getResultsQuery = new GetCurrentPollResults(Context.Channel.Id);
-        var getResults = await _dispatcher.QueryAsync<GetCurrentPollResults, IEnumerable<PollVoteResultDto>>(getResultsQuery);
+        await RespondAsync("Computing...");
+        var r = await _botDispatcher.ExecuteAsync(Context, new CompletePollBotCommand());
+        await DeleteOriginalResponseAsync();
         
-        var deletePollCommand = new DeletePollCommand(Context.Channel.Id);
-        var p = await _dispatcher.ExecuteAsync<DeletePollCommand, PollDto>(deletePollCommand);
-
-        if (p.IsOK && getResults.IsOK)
+        if (!r.IsOK)
         {
-            PollDto poll = p.Result!;
-
-            _ = Context.Channel.DeleteMessageAsync(poll.Metadata!.MessageId);
-            
-            await RespondAsync("Computing...");
-            
-            switch (p.Result!.Type)
-            {
-                case PollType.Binary:
-                    await RespondBinaryPollCompletedAsync(poll, getResults.Result!);
-                    break;
-                
-                case PollType.Numeric:
-                    await RespondHandleNumericPollCompletedAsync(poll, getResults.Result!);
-                    break;
-            }
+            await EmbedXmlUtils
+                .CreateErrorEmbed("Failed to complete poll", r.Error)
+                .SendMessageFromXmlAsync(Context.Channel);
         }
     }
 }

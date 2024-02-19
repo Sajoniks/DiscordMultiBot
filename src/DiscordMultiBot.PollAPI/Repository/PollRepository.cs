@@ -1,6 +1,8 @@
 ﻿using DiscordMultiBot.PollService.Data.Connection;
 using DiscordMultiBot.PollService.Data.Dto;
 using LinqToDB;
+using LinqToDB.Data;
+using LinqToDB.SqlQuery;
 
 namespace DiscordMultiBot.PollService.Repository;
 
@@ -170,7 +172,52 @@ public class PollRepository : IPollRepository
 
         throw new DoesNotExistException();
     }
-    
+
+    /// <inheridoc />
+    public async Task CreatePollTemplateAsync(ulong guildId, string name, PollOptions options)
+    {
+        if (options.Count == 0 || name.Length == 0)
+        {
+            throw new ArgumentException();
+        }
+
+        await DeletePollTemplateAsync(guildId, name);
+        await _db.ExecuteAsync("INSERT INTO PollPreset (GuildId, Name, Preset) VALUES($1, $2, $3)",
+            new DataParameter("$1", guildId, DataType.Int64),
+            new DataParameter("$2", name, DataType.Text),   
+            new DataParameter("$3", options.ToString(), DataType.Text)
+        );
+    }
+
+    /// <inheridoc />
+    public async Task DeletePollTemplateAsync(ulong guildId, string name)
+    {
+        if (name.Length == 0)
+        {
+            throw new ArgumentException();
+        }
+        
+        await _db.ExecuteAsync("DELETE FROM PollPreset WHERE Name=$1 AND GuildId=$2", 
+            new DataParameter("$1", name, DataType.Text),
+            new DataParameter("$2", guildId, DataType.Int64)
+        );
+    }
+
+    public async Task<PollOptions> GetPollTemplateAsync(ulong guildId, string name)
+    {
+        if (name.Length == 0)
+        {
+            throw new ArgumentException();
+        }
+
+        var preset = await _db.ExecuteAsync<string>("SELECT Preset FROM PollPreset WHERE GuildId=$1 AND Name=$2",
+            new DataParameter("$1", guildId),
+            new DataParameter("$2", name)
+        );
+        
+        return PollOptions.FromString(preset);
+    }
+
     ///<inheritdoc/>
     public async Task<PollVoteDto> CreateUserVoteInPollAsync(ulong channelId, ulong userId, string voteOption, string voteData)
     {

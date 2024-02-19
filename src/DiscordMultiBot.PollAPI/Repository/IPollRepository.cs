@@ -27,7 +27,9 @@ public interface IPollRepository : IRepository
     public Task<PollDto> DeletePollByChannelAsync(ulong channelId);
 
     public Task<int> GetNumReadyAsync(ulong channelId);
-    
+    public Task CreatePollTemplateAsync(ulong guildId, string name, PollOptions options);
+    public Task DeletePollTemplateAsync(ulong guildId, string name);
+    public Task<PollOptions> GetPollTemplateAsync(ulong guildId, string name);
     
     ///<exception cref="DoesNotExistException">Poll does not exist</exception>
     public Task<PollVoteDto> CreateUserVoteInPollAsync(ulong channelId, ulong userId, string voteOption, string voteData);

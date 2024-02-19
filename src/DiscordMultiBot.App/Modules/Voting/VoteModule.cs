@@ -13,6 +13,7 @@ namespace DiscordMultiBot.App.Modules.Voting;
 public partial class VoteModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly CommandDispatcher _dispatcher;
+    private readonly BotCommandDispatcher _botDispatcher;
 
     internal class PollOptionsAutocompleteHandler : AutocompleteHandler
     {
@@ -20,8 +21,7 @@ public partial class VoteModule : InteractionModuleBase<SocketInteractionContext
             IParameterInfo parameter, IServiceProvider services)
         {
             var dispatcher = services.GetRequiredService<CommandDispatcher>();
-            var poll = await dispatcher.QueryAsync<GetCurrentPollQuery, PollDto>(
-                new GetCurrentPollQuery(context.Channel.Id));
+            var poll = await dispatcher.QueryAsync(new GetCurrentPollQuery(context.Channel.Id));
 
             if (poll.IsOK)
             {
@@ -37,16 +37,17 @@ public partial class VoteModule : InteractionModuleBase<SocketInteractionContext
         }
     }
     
-    public VoteModule(CommandDispatcher dispatcher)
+    public VoteModule(CommandDispatcher dispatcher, BotCommandDispatcher botDispatcher)
     {
         _dispatcher = dispatcher;
+        _botDispatcher = botDispatcher;
     }
 
     [ComponentInteraction("vote:update-state", ignoreGroupNames: true, TreatAsRegex = false)]
     public async Task OnSetVoterStateAsync()
     {
         var getPollQuery = new GetCurrentPollQuery(Context.Channel.Id);
-        var getPoll = await _dispatcher.QueryAsync<GetCurrentPollQuery, PollDto>(getPollQuery);
+        var getPoll = await _dispatcher.QueryAsync(getPollQuery);
 
         EmbedXmlDoc response;
 
@@ -55,8 +56,7 @@ public partial class VoteModule : InteractionModuleBase<SocketInteractionContext
             var poll = getPoll.Result!;
             
             var updVoterStateCommand = new UpdatePollVoterStateCommand(Context.Channel.Id, Context.User.Id);
-            var updMetadata =
-                await _dispatcher.ExecuteAsync<UpdatePollVoterStateCommand, PollVoterStateDto>(updVoterStateCommand);
+            var updMetadata = await _dispatcher.ExecuteAsync(updVoterStateCommand);
 
             if (updMetadata.IsOK)
             {
@@ -74,11 +74,6 @@ public partial class VoteModule : InteractionModuleBase<SocketInteractionContext
                 }
                 
                 response = EmbedXmlUtils.CreateResponseEmbed("Accepted", message);
-
-                int numReady = (await _dispatcher.QueryAsync<GetNumVotes, int>(new GetNumVotes(Context.Channel.Id)))
-                    .Result;
-             
-                
             }
             else
             {

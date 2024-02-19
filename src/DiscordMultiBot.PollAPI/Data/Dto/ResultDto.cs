@@ -35,11 +35,20 @@ public class ResultDto
 
 public sealed class ResultDto<T> : ResultDto
 {
+    private T? _result;
+    
     internal ResultDto(T? result, bool isOk, string error)
         : base(isOk, error)
     {
-        Result = result;
+        _result = result;
     }
-    
-    public T? Result { get; }
+
+    public T Result
+    {
+        get
+        {
+            if (_result is null) throw new NullReferenceException();
+            return _result;
+        }
+    }
 }
