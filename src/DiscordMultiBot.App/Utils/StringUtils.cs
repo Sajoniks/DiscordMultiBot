@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections;
+using System.Text;
 
 namespace DiscordMultiBot.App.Utils;
 
@@ -28,18 +29,17 @@ public static class StringUtils
         }
         else
         {
-            var sb = new StringBuilder();
+            var sb = new Stack<string>();
             while (num > 0)
             {
                 uint x = num % 10;
                 num /= 10;
+                string emoji = NumEmojis[x];
 
-                sb.Append(NumEmojis[x]);
+                sb.Push(emoji);
             }
 
-            var str = sb.ToString().ToCharArray();
-            Array.Reverse(str);
-            return new string(str);
+            return String.Join(Char.MinValue, sb);
         }
     }
 }

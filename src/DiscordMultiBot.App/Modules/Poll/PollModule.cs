@@ -1,11 +1,8 @@
-﻿using System.Text;
-using Discord;
-using Discord.Interactions;
+﻿using Discord.Interactions;
 using DiscordMultiBot.App.Commands;
 using DiscordMultiBot.App.EmbedXml;
 using DiscordMultiBot.PollService.Command;
 using DiscordMultiBot.PollService.Data.Dto;
-using Newtonsoft.Json;
 
 namespace DiscordMultiBot.App.Modules.Poll;
 
@@ -73,7 +70,7 @@ public partial class PollModule : InteractionModuleBase<SocketInteractionContext
             {
                 await EmbedXmlUtils
                     .CreateErrorEmbed("Failed to clear polls", r.Error)
-                    .RespondFromXmlAsync(Context);
+                    .RespondFromXmlAsync(Context, ephemeral: true);
             }
             else
             {

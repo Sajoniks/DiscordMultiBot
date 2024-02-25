@@ -13,6 +13,7 @@
       <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+      <PackageReference Include="TagLibSharp" Version="2.3.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -23,30 +24,34 @@
       <None Update="Configuration\**">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-        <None Update="Audios\**">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
         <None Update="appsettings.Dev.json">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
-      <None Remove="Audios\**" />
       <None Remove="Databases\**" />
+        <None Update="Binaries\AudioPlayer\**">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Remove="libopus.dll" />
+        <None Remove="libsodium.dll" />
+        <None Remove="Audios\**" />
+        <None Remove="Tools\**" />
     </ItemGroup>
 
     <ItemGroup>
       <None Remove="EmbedLayouts\**" />
       <EmbeddedResource Include="EmbedLayouts\**" />
+      <EmbeddedResource Remove="Audios\**" />
+      <EmbeddedResource Remove="Tools\**" />
     </ItemGroup>
 
     <ItemGroup>
       <Folder Include="PollConfiguration" />
-      <Folder Include="Tools" />
-      <Folder Include="Tools\AudioParser" />
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Remove="Audios\**" />
       <Compile Remove="Databases\**" />
+      <Compile Remove="Audios\**" />
+      <Compile Remove="Tools\**" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,10 +1,8 @@
-﻿using Discord;
-using Discord.Interactions;
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 using DiscordMultiBot.App.Commands;
+using DiscordMultiBot.App.Models.Audio;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace DiscordMultiBot.App;
 
@@ -51,45 +49,29 @@ public sealed class DiscordMultiBotBuilder
             Configuration.AddJsonFile(audioConfigPath);
         }
 
-        string? maintance = Environment.GetEnvironmentVariable("BOT_MAINTANCE");
-        if (maintance is not null)
-        {
-            // @todo
-        }
-
-        
         var discordBotConfig = new DiscordSocketConfig
         {
-            LogLevel = isDevEnv ? LogSeverity.Verbose : LogSeverity.Error,
+            LogLevel = isDevEnv ? Discord.LogSeverity.Verbose : Discord.LogSeverity.Error,
             AlwaysResolveStickers = false,
         };
 
         Services
             .AddSingleton(discordBotConfig)
-            .AddSingleton<DiscordSocketClient>();
+            .AddSingleton<DiscordSocketClient>()
+            .AddSingleton<DiscordGuildAudioManager>();
     }
 
     public DiscordMultiBot Build()
     {
         Services
-            .AddSingleton(_ =>
-            {
-                var botCommands = new ServiceCollection();
-
-                botCommands
-                    .Add(Services)
-                    //--------------------------------------------------
-                    // Command handlers
-                    //
-                    .AddTransient<ISocketBotCommandHandler<CompletePollBotCommand>, CompletePollBotCommandHandler>()
-                    .AddTransient<ISocketBotCommandHandler<WritePollResultsBotCommand>, WritePollResultsCommandHandler>()
-                    .AddTransient<ISocketBotCommandHandler<UpdatePollMessageBotCommand>, UpdatePollMessageCommandHandler>()
-                    .AddTransient<ISocketBotCommandHandler<MakePollVoteBotCommand>, MakePollVoteCommandHandler>()
-                    .AddTransient<ISocketBotCommandHandler<ClearPollBotCommand>, ClearPollCommandHandler>()
-                    .AddTransient<ISocketBotCommandHandler<CreatePollBotCommand>, CreatePollBotCommandHandler>();
-
-                return new BotCommandDispatcher(botCommands.BuildServiceProvider());
-            });
+            .AddTransient<ISocketBotCommandHandler<CompletePollBotCommand>, CompletePollBotCommandHandler>()
+            .AddTransient<ISocketBotCommandHandler<WritePollResultsBotCommand>, WritePollResultsCommandHandler>()
+            .AddTransient<ISocketBotCommandHandler<UpdatePollMessageBotCommand>, UpdatePollMessageCommandHandler>()
+            .AddTransient<ISocketBotCommandHandler<MakePollVoteBotCommand>, MakePollVoteCommandHandler>()
+            .AddTransient<ISocketBotCommandHandler<ClearPollBotCommand>, ClearPollCommandHandler>()
+            .AddTransient<ISocketBotCommandHandler<CreatePollBotCommand>, CreatePollBotCommandHandler>()
+            .AddSingleton(x => new BotCommandDispatcher(x));
+        
         return new DiscordMultiBot(Configuration.Build(), Services.BuildServiceProvider());
     }
     

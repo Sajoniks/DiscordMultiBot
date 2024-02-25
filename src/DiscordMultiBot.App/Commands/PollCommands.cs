@@ -7,8 +7,10 @@ namespace DiscordMultiBot.App.Commands;
 public record CreatePollCommand(ulong ChannelId, string Style, int NumMembers, PollOptions PollOptions, bool IsAnonymous) : ICommand<PollDto>;
 public record DeletePollCommand(ulong ChannelId) : ICommand<PollDto>;
 public record UpdatePollVoterStateCommand(ulong ChannelId, ulong UserId) : ICommand<PollVoterStateDto>;
-public record UpdatePollMetadataCommand(ulong ChannelId, ulong MessageId) : ICommand;
+public record UpdatePollMetadataCommand(ulong ChannelId, ulong MessageId) : ICommand<PollMetadataDto>;
 public record CreatePollVoteCommand(ulong ChannelId, ulong UserId, string VoteOption, string VoteData) : ICommand;
+public record CreatePollVotesFromHistoryCommand(ulong ChannelId, ulong UserId) : ICommand<IEnumerable<PollVoteDto>>;
+public record WriteCurrentUserVotesToHistoryCommand(ulong ChannelId, ulong UserId) : ICommand;
 public record CreatePollOptionsTemplateCommand(ulong GuildId, string Name, PollOptions Options) : ICommand;
 public record DeletePollOptionsTemplateCommand(ulong GuildId, string Name) : ICommand;
 
@@ -115,31 +117,26 @@ public sealed class UpdatePollVoterStateCommandHandler : ICommandHandler<UpdateP
     }
 }
 
-public sealed class UpdatePollMetadataCommandHandler : ICommandHandler<UpdatePollMetadataCommand>
+public sealed class UpdatePollMetadataCommandHandler : ICommandHandler<UpdatePollMetadataCommand, PollMetadataDto>
 {
     private readonly IPollRepository _pollRepository;
-    private readonly IQueryHandler<GetCurrentPollQuery, PollDto> _getPollQuery;
-
-
-    public UpdatePollMetadataCommandHandler(
-        IPollRepository pollRepository, 
-        IQueryHandler<GetCurrentPollQuery, PollDto> pollQuery
-    )
+    
+    public UpdatePollMetadataCommandHandler(IPollRepository pollRepository)
     {
         _pollRepository = pollRepository;
     }
     
-    public async Task<ResultDto> ExecuteAsync(UpdatePollMetadataCommand command)
+    public async Task<ResultDto<PollMetadataDto>> ExecuteAsync(UpdatePollMetadataCommand command)
     {
         try
         {
-            await _pollRepository.AddOrUpdatePollMetadataAsync(
+            var r = await _pollRepository.AddOrUpdatePollMetadataAsync(
                 new PollMetadataDto(command.ChannelId, command.MessageId));
-            return ResultDto.CreateOK();
+            return ResultDto.CreateOK(r);
         }
         catch (DoesNotExistException)
         {
-            return ResultDto.CreateError("Poll does not exist");
+            return ResultDto.CreateError<PollMetadataDto>("Poll does not exist");
         }
     }
 }
@@ -162,6 +159,29 @@ public sealed class CreatePollOptionsTemplateCommandHandler : ICommandHandler<Cr
         catch (Exception)
         {
             return ResultDto.CreateError("Failed to create template"); 
+        }
+    }
+}
+
+public sealed class WriteCurrentUserVotesToHistoryCommandHandler : ICommandHandler<WriteCurrentUserVotesToHistoryCommand>
+{
+    private readonly IPollRepository _repository;
+
+    public WriteCurrentUserVotesToHistoryCommandHandler(IPollRepository repository)
+    {
+        _repository = repository;
+    }
+    
+    public async Task<ResultDto> ExecuteAsync(WriteCurrentUserVotesToHistoryCommand command)
+    {
+        try
+        {
+            await _repository.RecordUserVotesToHistoryAsync(command.ChannelId, command.UserId);
+            return ResultDto.CreateOK();
+        }
+        catch (Exception)
+        {
+            return ResultDto.CreateError("Failed to record votes");
         }
     }
 }
@@ -191,6 +211,29 @@ public sealed class CreateVoteCommandHandler : ICommandHandler<CreatePollVoteCom
         catch (DoesNotExistException)
         {
             return ResultDto.CreateError("Poll does not exist");
+        }
+    }
+}
+
+public sealed class CreatePollVotesFromHistoryCommandHandler : ICommandHandler<CreatePollVotesFromHistoryCommand, IEnumerable<PollVoteDto>>
+{
+    private readonly IPollRepository _repository;
+
+    public CreatePollVotesFromHistoryCommandHandler(IPollRepository repository)
+    {
+        _repository = repository;
+    }
+    
+    public async Task<ResultDto<IEnumerable<PollVoteDto>>> ExecuteAsync(CreatePollVotesFromHistoryCommand command)
+    {
+        try
+        {
+            var r= await _repository.CreateUserVotesFromHistoryInPollAsync(command.ChannelId, command.UserId);
+            return ResultDto.CreateOK(r);
+        }
+        catch (Exception)
+        {
+            return ResultDto.CreateError<IEnumerable<PollVoteDto>>("Failed to make votes");
         }
     }
 }

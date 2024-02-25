@@ -25,6 +25,16 @@ public static class EmbedXmlUtils
         return channel.SendMessageAsync(text: doc.Text, embeds: doc.Embeds, components: doc.Comps);
     }
 
+    public static Task ModifyMessageFromXmlAsync(this EmbedXmlDoc doc, ulong messageId, IMessageChannel channel)
+    {
+        return channel.ModifyMessageAsync(messageId, (prps) =>
+        {
+            prps.Embeds = doc.Embeds;
+            prps.Content = doc.Text;
+            prps.Components = doc.Comps;
+        });
+    }
+
     public static Task RespondFromXmlAsync(this EmbedXmlDoc doc, IInteractionContext context, bool ephemeral = false)
     {
         return context.Interaction.RespondAsync(text: doc.Text, embeds: doc.Embeds, components: doc.Comps, ephemeral: ephemeral);

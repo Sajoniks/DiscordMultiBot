@@ -10,12 +10,15 @@ public class OptionIsInvalidException : Exception { }
 
 public interface IPollRepository : IRepository
 {
+    public Task RecordUserVotesToHistoryAsync(ulong channelId, ulong userId);
+    public Task<IEnumerable<PollVoteDto>> CreateUserVotesFromHistoryInPollAsync(ulong channelId, ulong userId);
+
     ///<exception cref="AlreadyExistsException">Poll is already created</exception>
     public Task<PollDto> CreatePollAsync(ulong channelId, PollType type, PollOptions options, bool isAnon,
         int numMembers);
     
     ///<exception cref="DoesNotExistException"></exception>
-    public Task AddOrUpdatePollMetadataAsync(PollMetadataDto metadata);
+    public Task<PollMetadataDto> AddOrUpdatePollMetadataAsync(PollMetadataDto metadata);
     
     ///<exception cref="DoesNotExistException"></exception>
     public Task<PollMetadataDto> GetPollMetadataAsync(ulong channelId);

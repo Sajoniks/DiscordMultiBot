@@ -18,7 +18,8 @@ Parser.Default.ParseArguments<Options>(args)
 
         if (!Directory.Exists(inputDir))
         {
-            Console.WriteLine("Error: input directory does not exist");
+            Console.WriteLine("Error: {0}: directory does not exist", arg: inputDir);
+            Environment.Exit(-1);
             return;
         }
 
@@ -58,15 +59,24 @@ Parser.Default.ParseArguments<Options>(args)
             if (File.Exists(outputPath))
             {
                 WriteDiff(outputPath, Read(outputPath, o), config, o);
+                Environment.Exit(0);
                 return;
             }
         }
         catch (Exception)
         {
-             // ignore   
+            // ignore   
         }
 
-        Write(outputPath, config, o);
+        try
+        {
+            Write(outputPath, config, o);
+            Environment.Exit(0);
+        }
+        catch (Exception)
+        {
+            Environment.Exit(-1);
+        }
     });
 
 AudioConfig Read(string path, Options options)

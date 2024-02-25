@@ -16,7 +16,9 @@ public static class DiscordMultiBotCommandDependencyInjectionExtensions
             .AddTransient<ICommandHandler<CreatePollOptionsTemplateCommand>, CreatePollOptionsTemplateCommandHandler>()
             .AddTransient<ICommandHandler<DeletePollOptionsTemplateCommand>, DeletePollOptionsTemplateCommandHandler>()
             .AddTransient<ICommandHandler<UpdatePollVoterStateCommand, PollVoterStateDto>, UpdatePollVoterStateCommandHandler>()
-            .AddTransient<ICommandHandler<UpdatePollMetadataCommand>, UpdatePollMetadataCommandHandler>()
+            .AddTransient<ICommandHandler<UpdatePollMetadataCommand, PollMetadataDto>, UpdatePollMetadataCommandHandler>()
+            .AddTransient<ICommandHandler<WriteCurrentUserVotesToHistoryCommand>, WriteCurrentUserVotesToHistoryCommandHandler>()
+            .AddTransient<ICommandHandler<CreatePollVotesFromHistoryCommand, IEnumerable<PollVoteDto>>, CreatePollVotesFromHistoryCommandHandler>()
             .AddTransient<ICommandHandler<CreatePollVoteCommand>, CreateVoteCommandHandler>();
 
         // Queries

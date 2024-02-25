@@ -115,11 +115,21 @@ public class EmbedXmlCreator : IEmbedXmlCreator
             XmlNode? xId = xNode.Attributes?.GetNamedItem("Id");
             if ((xNode.Name.Equals("Element") || xNode.Name.Equals("Button")) && xId?.Value != null)
             {
+                bool isEmoji = false;
                 string bindingValue = "";
                 string id = xId.Value;
                 if (xNode.FirstChild?.Value is not null)
                 {
+                    isEmoji = xNode.FirstChild.Name.Equals("Emoji");
                     bindingValue = FormatString(xNode.FirstChild.Value);
+                }
+                else if (xNode.FirstChild is not null)
+                {
+                    isEmoji = xNode.FirstChild.Name.Equals("Emoji");
+                    if (xNode.FirstChild.FirstChild?.Value is not null)
+                    {
+                        bindingValue = FormatString(xNode.FirstChild.FirstChild.Value);
+                    }
                 }
 
                 if (bindingValue.Length == 0 && Bindings.ContainsKey(id))
@@ -147,10 +157,21 @@ public class EmbedXmlCreator : IEmbedXmlCreator
                     }
                     else if (xNode.Name.Equals("Button"))
                     {
+                        string style = xNode.Attributes?.GetNamedItem("Style")?.Value ?? ButtonStyle.Primary.ToString();
+                        var styleEnum = Enum.Parse<ButtonStyle>(style);
+                        
                         var button = new ButtonBuilder()
-                            .WithStyle(ButtonStyle.Success)
-                            .WithCustomId(id)
-                            .WithLabel(bindingValue);
+                            .WithStyle(styleEnum)
+                            .WithCustomId(id);
+
+                        if (isEmoji)
+                        {
+                            button.WithEmote(new Emoji(bindingValue));
+                        }
+                        else
+                        {
+                            button.WithLabel(bindingValue);
+                        }
 
                         comps.WithButton(button);
                     }

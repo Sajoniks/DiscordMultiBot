@@ -17,7 +17,7 @@ public partial class VoteModule
     {
         var r = await _botDispatcher.ExecuteAsync(
             Context,
-            new MakePollVoteBotCommand(PollType.Binary, option, new PollDataPreference(preference))
+            new MakePollVoteBotCommand(PollType.Numeric, option, new PollDataPreference(preference))
         );
 
         if (r.IsOK)

@@ -1,8 +1,10 @@
 ﻿using System.Text;
 using Discord;
 using Discord.Interactions;
+using Discord.WebSocket;
 using DiscordMultiBot.App.Data;
 using DiscordMultiBot.App.EmbedXml;
+using DiscordMultiBot.App.Models.Audio;
 using DiscordMultiBot.App.Utils;
 using DiscordMultiBot.PollService.Command;
 using DiscordMultiBot.PollService.Data.Dto;
@@ -11,9 +13,9 @@ using Newtonsoft.Json;
 
 namespace DiscordMultiBot.App.Commands;
 
-public record CompletePollBotCommand() : ISocketBotCommand;
+public record CompletePollBotCommand : ISocketBotCommand;
 public record WritePollResultsBotCommand(PollType PollType, IEnumerable<PollVoteResultDto> Votes) : ISocketBotCommand;
-public record ClearPollBotCommand() : ISocketBotCommand;
+public record ClearPollBotCommand : ISocketBotCommand;
 public record CreatePollBotCommand(PollOptions PollOptions, int NumMembers, bool IsAnonymous, string Type) : ISocketBotCommand;
 public record MakePollVoteBotCommand(PollType Type, string Option, object Data) : ISocketBotCommand;
 public record UpdatePollMessageBotCommand(PollDto Poll): ISocketBotCommand;
@@ -21,12 +23,15 @@ public record UpdatePollMessageBotCommand(PollDto Poll): ISocketBotCommand;
 public sealed class CreatePollBotCommandHandler : ISocketBotCommandHandler<CreatePollBotCommand>
 {
     private readonly ISocketBotCommandHandler<WritePollResultsBotCommand> _completeHandler;
+    private readonly DiscordGuildAudioManager _audioManager;
 
     public CreatePollBotCommandHandler(
-        ISocketBotCommandHandler<WritePollResultsBotCommand> completeHandler
+        ISocketBotCommandHandler<WritePollResultsBotCommand> completeHandler,
+        DiscordGuildAudioManager audioManager
     )
     {
         _completeHandler = completeHandler;
+        _audioManager = audioManager;
     }
     
     public async Task<ResultDto> ExecuteAsync(SocketInteractionContext context, CommandDispatcher dispatcher, CreatePollBotCommand command)
@@ -58,7 +63,6 @@ public sealed class CreatePollBotCommandHandler : ISocketBotCommandHandler<Creat
                     
                     default:
                         return ResultDto.CreateError("Unknown poll type");
-                        break;
                 }
                 
                 var results = new List<PollVoteResultDto>();
@@ -120,7 +124,29 @@ public sealed class CreatePollBotCommandHandler : ISocketBotCommandHandler<Creat
             ChannelId: context.Channel.Id,
             MessageId: m.Id
         ));
-        
+
+        IVoiceChannel? vc = context.Guild.VoiceChannels
+            .FirstOrDefault(v => v.ConnectedUsers.Any(u => u.Id == context.User.Id));
+        if (vc is not null)
+        {
+            _ = _audioManager
+                .GetGuildAudioManagerAsync(context.Guild)
+                .ContinueWith(t =>
+                {
+                    if (t.IsCompletedSuccessfully)
+                    {
+                        t.Result.AddPlayAudioRequestAsync(new VoiceChannelAudio(
+                            TrackId: "poll",
+                            VoiceChannel: vc,
+                            User: context.User,
+                            Source: context.Channel,
+                            Silent: true,
+                            HighPriority: true
+                        ));
+                    }
+                });
+        }
+
         return ResultDto.CreateOK();
     }
 }
@@ -147,8 +173,8 @@ public sealed class MakePollVoteCommandHandler : ISocketBotCommandHandler<MakePo
         {
             if (context.Interaction.Type == InteractionType.ApplicationCommand)
             {
-                var commandData = context.Interaction.Data as IUserCommandInteractionData;
-                return ResultDto.CreateError($"`/{commandData!.Name}` is not allowed on current poll");
+                var commandData = ((SocketSlashCommand)context.Interaction).Data;
+                return ResultDto.CreateError($"`/{commandData.Name} {string.Join(' ', commandData.Options.Select(x => x.Name))}` is not allowed on current poll");
             }
         }
 
@@ -187,17 +213,16 @@ public sealed class UpdatePollMessageCommandHandler : ISocketBotCommandHandler<U
         uint groupingIdx = 1;
         foreach (var resultGroup in resultEnumerable)
         {
-            var sb = new StringBuilder();
-            sb.AppendFormat("{0}`{1}`", StringUtils.ConvertUInt32ToEmoji(groupingIdx), resultGroup.Key);
+            string name = $"{StringUtils.ConvertUInt32ToEmoji(groupingIdx)}`{resultGroup.Key}`";
+            string value = "\u200b";
             if (!poll.IsAnonymous)
             {
-                int sumVotes = resultGroup
-                    .Sum(x => x.Data.Value ? 1 : -1);
-                                
-                sb.AppendFormat(" - `{0}`", sumVotes);
+                value = resultGroup
+                    .Sum(x => x.Data.Value ? 1 : -1)
+                    .ToString();
             }
                             
-            xml.Fields.Add(new EmbedXmlField(sb.ToString(), "\u200b"));
+            xml.Fields.Add(new EmbedXmlField(name, value));
             ++groupingIdx;
         }
         
@@ -222,17 +247,16 @@ public sealed class UpdatePollMessageCommandHandler : ISocketBotCommandHandler<U
         uint groupingIdx = 1;
         foreach (var resultGroup in resultEnumerable)
         {
-            var sb = new StringBuilder();
-            sb.AppendFormat("{0}`{1}`", StringUtils.ConvertUInt32ToEmoji(groupingIdx), resultGroup.Key);
+            string name = $"{StringUtils.ConvertUInt32ToEmoji(groupingIdx)}`{resultGroup.Key}`";
+            string value = "\u200b";
             if (!poll.IsAnonymous)
             {
-                int sumVotes = resultGroup
-                    .Sum(x => x.Data.Preference);
-                                
-                sb.AppendFormat(" - `{0}`", sumVotes);
+                value = resultGroup
+                    .Sum(x => x.Data.Preference)
+                    .ToString();
             }
                             
-            xml.Fields.Add(new EmbedXmlField(sb.ToString(), "\u200b"));
+            xml.Fields.Add(new EmbedXmlField(name, value));
             ++groupingIdx;
         }
 
@@ -285,12 +309,15 @@ public sealed class CompletePollBotCommandHandler : ISocketBotCommandHandler<Com
     
     public async Task<ResultDto> ExecuteAsync(SocketInteractionContext context, CommandDispatcher dispatcher, CompletePollBotCommand command)
     {
+        await dispatcher.ExecuteAsync(new WriteCurrentUserVotesToHistoryCommand(context.Channel.Id, context.User.Id));
+
         var resultsQuery = await dispatcher.QueryAsync(new GetCurrentPollResults(context.Channel.Id));
         var delPollCommand = await dispatcher.ExecuteAsync(new DeletePollCommand(context.Channel.Id));
         if (delPollCommand.IsOK && resultsQuery.IsOK)
         {
             PollDto poll = delPollCommand.Result;
-
+            
+            
             _ = context.Channel.DeleteMessageAsync(poll.Metadata!.MessageId);
             return await _pollResultHandler.ExecuteAsync(context, dispatcher, new WritePollResultsBotCommand(poll.Type, resultsQuery.Result));
         }
@@ -327,6 +354,13 @@ public sealed class ClearPollCommandHandler : ISocketBotCommandHandler<ClearPoll
 
 public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<WritePollResultsBotCommand>
 {
+    private DiscordGuildAudioManager _audioManager;
+
+    public WritePollResultsCommandHandler(DiscordGuildAudioManager audioManager)
+    {
+        _audioManager = audioManager;
+    }
+
     private async Task<ResultDto> WriteBinaryPollAsync(SocketInteractionContext context, CommandDispatcher dispatcher,
         WritePollResultsBotCommand botCommand)
     {
@@ -355,7 +389,7 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
 
         foreach (var resultGroup in resultGroups)
         {
-            var votedUsers = String.Join("\n", resultGroup.Items.Select(x => $"{context.Guild.GetUser(x.Vote.UserId).Username} ({(x.Data.Value ? "Yes" : "No")})"));
+            var votedUsers = String.Join("\n", resultGroup.Items.Select(x => $"{MentionUtils.MentionUser(x.Vote.UserId)} ({(x.Data.Value ? "Yes" : "No")})"));
 
             var resultKeySb = new StringBuilder();
             resultKeySb.AppendFormat("`{0}` - ", resultGroup.Key);
@@ -373,7 +407,7 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
                 resultKeySb.AppendFormat("{0} No", resultGroup.No);
             }
 
-            resultXml.Fields.Add(new EmbedXmlField(resultKeySb.ToString(), votedUsers));
+            resultXml.Fields.Add(new EmbedXmlField(resultKeySb.ToString(), votedUsers, true));
         }
 
         string option = resultGroups
@@ -381,6 +415,37 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
             .MaxBy(_ => Random.Shared.Next())
             .Key;
 
+        try
+        {
+            IVoiceChannel? voiceChannel = context.Guild.VoiceChannels
+                .FirstOrDefault(vc => vc.ConnectedUsers.Any(u => u.Id == context.User.Id));
+
+            if (voiceChannel is not null)
+            {
+                _ = _audioManager
+                    .GetGuildAudioManagerAsync(context.Guild)
+                    .ContinueWith(t =>
+                    {
+                        if (t.IsCompletedSuccessfully)
+                        {
+                            t.Result.AddPlayAudioRequestAsync(new VoiceChannelAudio(
+                                TrackId: option,
+                                VoiceChannel: voiceChannel,
+                                User: context.User,
+                                Source: context.Channel,
+                                HighPriority: true,
+                                Silent: true,
+                                CompletionCallback: () => { })
+                            );
+                        }
+                    });
+            }
+        }
+        catch (Exception)
+        {
+            // ignore
+        }
+        
         var optionXml = new EmbedXmlCreator();
         string colorHex = "";
         optionXml.Bindings.Add("Option", option);
@@ -391,6 +456,12 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
                     DiscordMultiBot.Instance.Configuration
                         .GetSection("Bot:PollVotes")
                         .GetSection(option);
+                
+                if (colorsConfiguration["Color"] is null)
+                {
+                    colorsConfiguration = DiscordMultiBot.Instance.Configuration
+                        .GetSection("Bot:PollVotes:default");
+                }
                 
                 colorHex = colorsConfiguration["Color"] ?? "";
             }
@@ -441,8 +512,8 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
 
         foreach (var resultGroup in resultGroups)
         {
-            var votedUsers = String.Join("\n", resultGroup.Items.Select(x => $"{context.Guild.GetUser(x.Vote.UserId).Username} ({x.Data.Preference})"));
-            resultXml.Fields.Add(new EmbedXmlField($"`{resultGroup.Key}` - {resultGroup.Sum}", votedUsers));
+            var votedUsers = String.Join("\n", resultGroup.Items.Select(x => $"{MentionUtils.MentionUser(x.Vote.UserId)} ({x.Data.Preference})"));
+            resultXml.Fields.Add(new EmbedXmlField($"`{resultGroup.Key}` - {resultGroup.Sum}", votedUsers, true));
         }
 
         string option = resultGroups
@@ -450,6 +521,37 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
             .MaxBy(_ => Random.Shared.Next())
             .Key;
 
+        try
+        {
+            IVoiceChannel? voiceChannel = context.Guild.VoiceChannels
+                .FirstOrDefault(vc => vc.Users.Any(u => u.Id == context.User.Id));
+
+            if (voiceChannel is not null)
+            {
+                _ = _audioManager
+                    .GetGuildAudioManagerAsync(context.Guild)
+                    .ContinueWith(t =>
+                    {
+                        if (t.IsCompletedSuccessfully)
+                        {
+                            t.Result.AddPlayAudioRequestAsync(new VoiceChannelAudio(
+                                TrackId: option,
+                                VoiceChannel: voiceChannel,
+                                User: context.User,
+                                Source: context.Channel,
+                                HighPriority: true,
+                                Silent: true,
+                                CompletionCallback: () => { })
+                            );
+                        }
+                    });
+            }
+        }
+        catch (Exception)
+        {
+            // ignore
+        }
+        
         var optionXml = new EmbedXmlCreator();
         optionXml.Bindings.Add("Option", option);
         string colorHex = "";
@@ -459,6 +561,12 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
                 IConfigurationSection colorsConfiguration = DiscordMultiBot.Instance.Configuration
                     .GetSection("Bot:PollVotes")
                     .GetSection(option);
+
+                if (colorsConfiguration["Color"] is null)
+                {
+                    colorsConfiguration = DiscordMultiBot.Instance.Configuration
+                        .GetSection("Bot:PollVotes:default");
+                }
                 
                 colorHex = colorsConfiguration["Color"] ?? "";
             }

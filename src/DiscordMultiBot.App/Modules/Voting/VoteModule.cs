@@ -74,6 +74,12 @@ public partial class VoteModule : InteractionModuleBase<SocketInteractionContext
                 }
                 
                 response = EmbedXmlUtils.CreateResponseEmbed("Accepted", message);
+
+                var numReadyQuery = await _dispatcher.QueryAsync(new GetNumVotes(Context.Channel.Id));
+                if (numReadyQuery.IsOK && numReadyQuery.Result == poll.NumMembers)
+                {
+                    await _botDispatcher.ExecuteAsync(Context, new CompletePollBotCommand());
+                }
             }
             else
             {
@@ -85,12 +91,27 @@ public partial class VoteModule : InteractionModuleBase<SocketInteractionContext
             response = EmbedXmlUtils.CreateErrorEmbed("Error", getPoll.Error);
         }
 
-        await RespondAsync(text: response.Text, components: response.Comps, embeds: response.Embeds);
+        await RespondAsync(text: response.Text, components: response.Comps, embeds: response.Embeds, ephemeral: true);
     }
     
     [SlashCommand("revote", "Use your last poll values in current poll", ignoreGroupNames: true)]
     public async Task RevoteAsync()
     {
-        
+        var addVotesCommand = await _dispatcher.ExecuteAsync(new CreatePollVotesFromHistoryCommand(Context.Channel.Id, Context.User.Id));
+        if (addVotesCommand.IsOK)
+        {
+            await EmbedXmlUtils
+                .CreateResponseEmbed("Revote applied", "Options from the previuos poll were applied")
+                .RespondFromXmlAsync(Context, ephemeral: true);
+
+            var poll = await _dispatcher.QueryAsync(new GetCurrentPollQuery(Context.Channel.Id));
+            await _botDispatcher.ExecuteAsync(Context, new UpdatePollMessageBotCommand(poll.Result));
+        }
+        else
+        {
+            await EmbedXmlUtils
+                .CreateErrorEmbed("Error", addVotesCommand.Error)
+                .RespondFromXmlAsync(Context, ephemeral: true);
+        }
     }
 }
