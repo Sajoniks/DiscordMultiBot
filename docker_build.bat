@@ -7,7 +7,9 @@ echo [Saving to the archive]
 echo Saving to %~dp0docker
 mkdir %~dp0docker
 cd %~dp0docker
-docker save -o discord-multibot discord-multibot
+docker save -o discord-multibot.tar discord-multibot
 docker scout cache prune -f
-tar -czf discord-multibot.tar.gz discord-multibot
-del discord-multibot
+tar -czf discord-multibot.tar.gz discord-multibot.tar
+del discord-multibot.tar
+
+echo Done
