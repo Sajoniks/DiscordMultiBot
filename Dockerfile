@@ -4,61 +4,54 @@ WORKDIR /app
 FROM build-env AS tools
 WORKDIR /tools/src
 
-ARG AudioParser=DiscordMultiBot.AudioParser
+ARG AUDIOPARSER_NAME=DiscordMultiBot.AudioParser
 
-COPY src/$AudioParser/*.csproj ./$AudioParser/
-RUN dotnet restore ./$AudioParser
+COPY src/$AUDIOPARSER_NAME/*.csproj ./$AUDIOPARSER_NAME/
+RUN dotnet restore ./$AUDIOPARSER_NAME
 
-COPY src/$AudioParser ./$AudioParser
-RUN dotnet publish ./$AudioParser --no-restore -c Release -o /tools/audioparser
+COPY src/$AUDIOPARSER_NAME ./$AUDIOPARSER_NAME
+
+RUN dotnet publish ./$AUDIOPARSER_NAME -c Release -o ../audioparser --no-restore
 
 FROM build-env AS apps
 WORKDIR /app/src
 
-ARG PollAPI=DiscordMultiBot.PollAPI
-ARG App=DiscordMultiBot.App
+ARG POLLAPI_NAME=DiscordMultiBot.PollAPI
+ARG APP_NAME=DiscordMultiBot.App
+
+COPY src/$APP_NAME/*.csproj ./$APP_NAME/
+COPY src/$POLLAPI_NAME/*.csproj ./$POLLAPI_NAME/
+
+RUN dotnet restore ./$APP_NAME     && \
+    dotnet restore ./$POLLAPI_NAME
+
+COPY src/$APP_NAME      ./$APP_NAME
+COPY src/$POLLAPI_NAME  ./$POLLAPI_NAME
+
+FROM apps AS publish
+
+ARG APP_NAME=DiscordMultiBot.App
 
 COPY --from=tools /tools /tools
 
-COPY src/$App/*.csproj     ./$App/
-COPY src/$PollAPI/*.csproj ./$PollAPI/
+WORKDIR /app/src
 
-RUN dotnet restore ./$App && \
-    dotnet restore ./$PollAPI
-
-COPY src/$App     ./$App
-COPY src/$PollAPI ./$PollAPI
-COPY src/$App/Audios    /app/audio
-COPY src/$App/Databases /app/db
-
-RUN dotnet /tools/audioparser/audioparser.dll -i /app/audio -o /app/audio/audiosettings.json --namespace Bot:Audio &&  \
-    dotnet build ./$PollAPI -c Release -o /app/build &&  \
-    dotnet build ./$App     -c Release -o /app/build 
-
-FROM apps AS publish
-WORKDIR /app
-
-ARG App=DiscordMultiBot.App
-
-RUN dotnet publish ./src/$App -c Release --no-restore -o ./publish
-COPY --from=apps /app/audio/audiosettings.json ./publish/Configuration/
+RUN dotnet publish ./$APP_NAME -c Release --no-restore -o ../publish && \
+    dotnet /tools/audioparser/audioparser.dll -i /app/src/$APP_NAME/Audios -o /app/publish/Configuration/audiosettings.json --base-path /app/audios --namespace Bot:Audio
 
 FROM mcr.microsoft.com/dotnet/runtime:6.0 as runtime
 WORKDIR /app
 
 COPY --from=publish /app/publish .
+COPY --from=mwader/static-ffmpeg:6.1.1 /ffmpeg /usr/local/bin/
 
 ENV BOT_ENV=DEV
-ENV AUDIOS_PATH=./audio
+ENV AUDIOS_PATH=./audios
 ENV SQLITE_PATH=./db
 
-RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
-    --mount=target=/var/cache/apt,type=cache,sharing=locked \
-    rm -f /etc/apt/apt.conf.d/docker-clean && \
-    apt update &&  \
-    apt install -y --no-install-recommends \
-      ffmpeg \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
       libopus-dev \
-      libsodium-dev
+      libsodium-dev \
 
 CMD dotnet DiscordMultiBot.App.dll   

@@ -13,9 +13,8 @@ public record VoiceChannelAudio(
     Action? CompletionCallback = null
 );
 
-public interface IGuildAudioManager<TModel, TManager> 
-    where TModel : IAudioPlayerModel
-    where TManager : IAudioManager<TModel, VoiceChannelAudio>
+public interface IGuildAudioManager<TManager> 
+    where TManager : IAudioManager<VoiceChannelAudio>
 {
     public Task<TManager> GetGuildAudioManagerAsync(IGuild guild);
 }

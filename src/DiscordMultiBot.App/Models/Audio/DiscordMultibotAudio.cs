@@ -1,24 +1,81 @@
 ﻿using Discord;
+using Discord.WebSocket;
 using DiscordMultiBot.App.EmbedXml;
 using DiscordMultiBot.App.Logging;
+using DiscordMultiBot.App.Models.Audio2;
 using Microsoft.Extensions.Configuration;
 
 namespace DiscordMultiBot.App.Models.Audio;
 
 public record AudioFinishedEventArgs(Exception? Exception, VoiceChannelAudio Audio);
 
-public class DiscordAudioManager : IAudioManager<DiscordAudioPlayer, VoiceChannelAudio>
+public class DiscordAudioManager : IAudioManager<VoiceChannelAudio>
 {
-    private record VoiceChannelAudioRequest(Guid Guid, VoiceChannelAudio Audio);
+    private record VoiceChannelAudioRequest(long Id, VoiceChannelAudio Audio);
+
+    private object _lock = new object();
+    
     private Queue<VoiceChannelAudioRequest> _requestQueue = new();
-    private VoiceChannelAudio? _currentAudio = null;
-    private DiscordAudioPlayer _player = new();
+    private DiscordAudioSubsystem? _ss;
+    private VoiceChannelAudio? _activeRequest = null;
+    private DiscordAudioSource? _activeAudioSource = null;
     private IConfiguration _configuration;
     private Logger _logger;
     private ulong _audioPlayerMessageId = 0;
+    private ulong _lastNotificationMessageId = 0;
     private IGuild _ownerGuild;
+
+    public bool TryFindUri(string trackId, out Uri? uri)
+    {
+        uri = null;
+        try
+        {
+            string sectionPath = "Bot:Audio:Files";
+            IConfigurationSection files = _configuration.GetSection(sectionPath);
+
+            var first = int.Parse( files.GetChildren().First().Key );
+            var last = int.Parse( files.GetChildren().Last().Key );
+
+            IConfigurationSection? target = null;
+            for (int i = first; i <= last; ++i)
+            {
+                IConfigurationSection fileSection = files.GetSection(i.ToString());
+                string? fileName = fileSection["Name"];
+                
+                if (fileName?.Equals(trackId) ?? false)
+                {
+                    target = fileSection;
+                    break;
+                }
+            }
+
+            IConfigurationSection? file = null;
+            if (target is not null)
+            {
+                string targetSection = "Files";
+                IConfigurationSection targetFiles = target.GetSection(targetSection);
+
+                var targetFirst = int.Parse( targetFiles.GetChildren().First().Key );
+                var targetLast = int.Parse( targetFiles.GetChildren().Last().Key );
+                var rnd = Random.Shared.Next(targetFirst, targetLast + 1);
+
+                file = targetFiles.GetSection(rnd.ToString());
+            }
+
+            if (file is not null)
+            {
+                uri = new Uri(file["Path"]!);
+            }
+        }
+        catch (Exception)
+        {
+            // ignore
+        }
+
+        return (uri is not null);
+    }
     
-    private AudioParameters FindAudioParametersByTrackId(string trackId)
+    private StreamingResource CreateStreamingResourceByTrackId(string trackId)
     {
         if (trackId.Length == 0)
         {
@@ -138,7 +195,7 @@ public class DiscordAudioManager : IAudioManager<DiscordAudioPlayer, VoiceChanne
             }
         }
 
-        return new AudioParameters(uri, volume, looping);
+        return new StreamingResource(Source: uri, Looping: looping, Volume: volume);
     }
     
     public DiscordAudioManager(IGuild ownerGuild, IConfiguration configuration)
@@ -146,67 +203,43 @@ public class DiscordAudioManager : IAudioManager<DiscordAudioPlayer, VoiceChanne
         _ownerGuild = ownerGuild;
         _configuration = configuration;
         _logger = DiscordMultiBot.Instance.CreateLogger("Audio Manager");
-        _player.Disconnected += PlayerDisconnected;
-        _player.PlaybackFinished += PlayerPlaybackFinished;
-    }
-
-    private void PlayerDisconnected(Exception? obj)
-    {
-        _requestQueue.Clear();
-        _player.Dispose();
-        _player = new DiscordAudioPlayer();
-    }
-
-    private void PlayerOnVoiceChannelEmpty(object? sender, EventArgs args)
-    {
-        if (_currentAudio is not null)
-        {
-            if (!_currentAudio.Silent)
-            {
-                _currentAudio.Source.SendMessageAsync("Stopping player. Everyone has left the channel.");
-            }
-
-            _currentAudio = null;
-        }
-
-        _requestQueue.Clear();
-        _player.Dispose();
-        _player = new DiscordAudioPlayer();
-    }
-
-    private void PlayerPlaybackFinished(Exception? e)
-    {
-        if (_currentAudio is not null)
-        {
-            _currentAudio = null;
-        }
-
-        if (_requestQueue.Count != 0)
-        {
-            ProcessNextAudioRequest();
-        }
     }
 
     private void ProcessNextAudioRequest()
     {
+        if (_ss is null)
+        {
+            throw new InvalidOperationException("Subsystem was not created");
+        }
+        
         _logger.Info("Next audio is being processed");
         
         VoiceChannelAudioRequest next = _requestQueue.Dequeue();
-        _currentAudio = next.Audio;
-        var nextParms = FindAudioParametersByTrackId(next.Audio.TrackId);
-        _player.Open(nextParms);
-        if (next.Audio.AutoPlay)
-        {
-            _player.Play(TimeSpan.Zero);
-        }
+        _activeRequest = next.Audio;
 
+        string title = "";
+        string artist = "";
+        var audio = _ss.Create();
+        if (next.Audio.TrackId.StartsWith("https://"))
+        {
+            audio.DataProvider = new YtPcmDataProvider(new Uri(next.Audio.TrackId));
+        }
+        else
+        {
+            var streamingResource = CreateStreamingResourceByTrackId(next.Audio.TrackId);
+            audio.DataProvider = new FFmpegPcmDataProvider(streamingResource);
+            TagLib.File tags = TagLib.File.Create(System.Web.HttpUtility.UrlDecode(streamingResource.Source.AbsolutePath));
+            title = tags.Tag.Title ?? "Unknown Title";
+            artist = tags.Tag.JoinedAlbumArtists ?? "Unknown Artist";
+        }
+        audio.Play();
+        _activeAudioSource = audio;
+        
         if (!next.Audio.Silent)
         {
-            var tags = TagLib.File.Create(System.Web.HttpUtility.UrlDecode(nextParms.Uri.AbsolutePath));
-
             var creator = new EmbedXmlCreator();
-            creator.Bindings["CurrentSong"] = tags.Tag.Title ?? "Unknown Title";
-            creator.Bindings["Artist"] = tags.Tag.JoinedAlbumArtists ?? "Unknown Artist";
+            creator.Bindings["CurrentSong"] = title;
+            creator.Bindings["Artist"] = artist;
 
             if (_audioPlayerMessageId == 0)
             {
@@ -228,80 +261,124 @@ public class DiscordAudioManager : IAudioManager<DiscordAudioPlayer, VoiceChanne
                     .ModifyMessageFromXmlAsync(_audioPlayerMessageId, next.Audio.Source);
             }
         }
-
-        _player.AttachToChannelAsync(next.Audio.VoiceChannel);
     }
 
     public Task SkipCurrentAudioAsync()
     {
-        if (_currentAudio is not null)
+        lock (_lock)
         {
-            _currentAudio = null;
-            _player.Stop();
+            _activeRequest = null;
         }
 
-        if (_requestQueue.Any())
-        {
-            ProcessNextAudioRequest();
-        }
+        _activeAudioSource?.Stop();
+        _activeAudioSource = null;
         
         return Task.CompletedTask;
     }
     
-    public Task<Guid> AddPlayAudioRequestAsync(VoiceChannelAudio request)
+    public async Task<long> AddPlayAudioRequestAsync(VoiceChannelAudio request)
     {
+        if (_ss is null)
+        {
+            _ss = await Task.Run(() => DiscordAudioSubsystem.CreateSubsystemAsync(request.VoiceChannel));
+            _ss.AudioStopped += OnAudioStopped;
+            _ss.Stopped += OnSubsystemStopped;
+            _ss.Started += OnSubsystemStarted;
+            _ss.Start();
+        }
+        
         _logger.Info($"Added new audio request [Id = {request.TrackId}  HighPriority = {request.HighPriority}  Num Requests = {_requestQueue.Count + 1}]");
         
         if (request.HighPriority)
         {
-            _requestQueue.Clear();
-            if (_currentAudio is not null)
-            {
-                _currentAudio = null;
-                _player.Stop();
-            }
+            await CancelAllRequests();
         }
         
         var r = new VoiceChannelAudioRequest(
-            Guid: Guid.NewGuid(),
+            Id: Environment.TickCount64,
             Audio: request
         );
         _requestQueue.Enqueue(r);
 
-        if (_currentAudio is null)
+        if (_activeRequest is null)
         {
             // first audio in the queue
             ProcessNextAudioRequest();
         }
+
+        return r.Id;
+    }
+
+    private void OnSubsystemStarted()
+    {
         
-        return Task.FromResult(r.Guid);
+    }
+
+    private void OnSubsystemStopped()
+    {
+        _ss = null;
+        _activeAudioSource = null;
+        _activeRequest = null;
+        _requestQueue.Clear();
+    }
+
+    private void OnAudioStopped(DiscordAudioSource obj)
+    {
+        if (obj == _activeAudioSource)
+        {
+            _activeAudioSource = null;
+        }
+
+        _activeRequest = null;
+        
+        if (_requestQueue.Any())
+        {
+            ProcessNextAudioRequest();
+        }
     }
 
     public Task CancelAllRequests()
     {
-        return Task.CompletedTask;
+        _requestQueue.Clear();
+        if (_activeRequest is not null)
+        {
+            _activeRequest = null;
+        }
+
+        _activeAudioSource = null;
+        if (_ss is not null)
+        {
+            return _ss.StopAllAsync();
+        }
+        else
+        {
+            return Task.CompletedTask;
+        }
     }
 
-    public bool IsEnqueued(Guid guid)
+    public bool IsEnqueued(long id)
     {
-        return _requestQueue.Any(x => x.Guid.Equals(guid));
+        return _requestQueue.Any(x => x.Id == id);
     }
-
-    public DiscordAudioPlayer Player => _player;
+    
+    public SocketVoiceChannel? VoiceChannel => _activeRequest?.VoiceChannel as SocketVoiceChannel;
 }
 
-public class DiscordGuildAudioManager : IGuildAudioManager<DiscordAudioPlayer, DiscordAudioManager>
+public class DiscordGuildAudioManager : IGuildAudioManager<DiscordAudioManager>
 {
     private Dictionary<ulong, DiscordAudioManager> _guilds = new();
     
     public Task<DiscordAudioManager> GetGuildAudioManagerAsync(IGuild guild)
     {
-        if (!_guilds.TryGetValue(guild.Id, out var manager))
+        lock (_guilds)
         {
-            manager = new DiscordAudioManager(guild, DiscordMultiBot.Instance.Configuration);
-            _guilds.Add(guild.Id, manager);
-        }
+            if (!_guilds.TryGetValue(guild.Id, out var manager))
+            {
+                manager = new DiscordAudioManager(guild, DiscordMultiBot.Instance.Configuration);
+                _guilds.Add(guild.Id, manager);
+            }
 
-        return Task.FromResult(manager);
+            return Task.FromResult(manager);
+        }
     }
 }

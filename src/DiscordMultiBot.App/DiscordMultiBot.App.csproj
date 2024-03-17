@@ -14,6 +14,7 @@
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
       <PackageReference Include="TagLibSharp" Version="2.3.0" />
+      <PackageReference Include="YoutubeSearchApi.Net" Version="1.1.1" />
     </ItemGroup>
 
     <ItemGroup>
@@ -35,6 +36,9 @@
         <None Remove="libsodium.dll" />
         <None Remove="Audios\**" />
         <None Remove="Tools\**" />
+        <None Update="Configuration\audiosettings.json">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
     <ItemGroup>

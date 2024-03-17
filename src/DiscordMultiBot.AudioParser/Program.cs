@@ -5,9 +5,9 @@ using Newtonsoft.Json.Linq;
 Parser.Default.ParseArguments<Options>(args)
     .WithParsed(o =>
     {
-        string basePath = AppDomain.CurrentDomain.BaseDirectory;
-        string inputDir = Path.GetFullPath(o.InputPath, basePath);
-        string outputPath = Path.GetFullPath(o.OutputPath, basePath);
+        string basePath = o.BasePathOverride.Length == 0 ? Environment.CurrentDirectory : Path.GetFullPath(o.BasePathOverride, Environment.CurrentDirectory);
+        string inputDir = Path.GetFullPath(o.InputPath, Environment.CurrentDirectory);
+        string outputPath = Path.GetFullPath(o.OutputPath, Environment.CurrentDirectory);
         
         Console.WriteLine("Input: {0}", inputDir);
         Console.WriteLine("Output: {0}", outputPath);
@@ -24,7 +24,7 @@ Parser.Default.ParseArguments<Options>(args)
         }
 
         List<AudioGroup> audioGroups = new();
-        var config = new AudioConfig(inputDir, audioGroups);
+        var config = new AudioConfig(basePath, audioGroups);
 
         var dirInfo = new DirectoryInfo(inputDir);
         foreach (var dir in dirInfo.EnumerateDirectories())
@@ -43,8 +43,11 @@ Parser.Default.ParseArguments<Options>(args)
             {
                 Console.WriteLine("-- Added {0}", files.Name);
 
+                string relPath = GetRelativeDirectoryRoot(files.FullName, inputDir);
+                string absPath = Path.GetFullPath(relPath, basePath);
+
                 Dictionary<string, object> audioProps = new();
-                AudioFile audioFile = new AudioFile(files.FullName, audioProps);
+                AudioFile audioFile = new AudioFile(absPath, audioProps);
                 audioFiles.Add(audioFile);
 
                 audioProps.Add("volume", 1.0f);
@@ -202,6 +205,33 @@ void WriteDiff(string path, AudioConfig baseConfig, AudioConfig newConfig, Optio
     Write(path, new AudioConfig(newPath, newGroups), options);
 }
 
+string GetRelativeDirectoryRoot(string path, string basePath)
+{
+    string relPath = Path.GetRelativePath(basePath, path);
+    
+    const string separators = ".\\/";
+
+    bool split = false;
+    int i = 0;
+    while (i < relPath.Length - 4)
+    {
+        if (relPath[i] == '.' && relPath[i + 1] == '.' && relPath[i + 2] == Path.DirectorySeparatorChar &&
+            !separators.Contains(relPath[i + 3]))
+        {
+            i = i + 3;
+            break;
+        }
+
+        ++i;
+    }
+
+    if (!split)
+    {
+        return relPath;
+    }
+    return relPath.Substring(i);
+}
+
 public record AudioFile(string Path, IDictionary<string, object> Properties);
 public record AudioGroup(string Name, IDictionary<string, object> Properties, IEnumerable<AudioFile> Files);
 public record AudioConfig(string Path, IEnumerable<AudioGroup> Files);
@@ -211,6 +241,9 @@ public class Options
     [Option('i', "input", Required = true,
         HelpText = "Parses given folder into audio file configuration for DiscordMultiBot")]
     public string InputPath { get; set; } = "";
+
+    [Option("base-path", Required = false, HelpText = "Override base input path")]
+    public string BasePathOverride { get; set; } = "";
 
     [Option('o', "output", Required = true, HelpText = "Output configuration file path")]
     public string OutputPath { get; set; } = "";

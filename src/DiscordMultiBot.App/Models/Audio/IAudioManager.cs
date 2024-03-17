@@ -1,8 +1,7 @@
 ﻿namespace DiscordMultiBot.App.Models.Audio;
 
-public interface IAudioManager<TModel, TRequest>
+public interface IAudioManager<TRequest>
 {
-    public Task<Guid> AddPlayAudioRequestAsync(TRequest request);
+    public Task<long> AddPlayAudioRequestAsync(TRequest request);
     public Task CancelAllRequests();
-    public TModel Player { get; }
 }
