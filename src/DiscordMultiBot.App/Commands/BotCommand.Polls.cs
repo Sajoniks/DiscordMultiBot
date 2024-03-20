@@ -129,14 +129,17 @@ public sealed class CreatePollBotCommandHandler : ISocketBotCommandHandler<Creat
             .FirstOrDefault(v => v.ConnectedUsers.Any(u => u.Id == context.User.Id));
         if (vc is not null)
         {
-            _ = _audioManager
+            await _audioManager
                 .GetGuildAudioManagerAsync(context.Guild)
                 .ContinueWith(t =>
                 {
                     if (t.IsCompletedSuccessfully)
                     {
-                        t.Result.AddPlayAudioRequestAsync(new VoiceChannelAudio(
+                        return t.Result.AddPlayAudioRequestAsync(new VoiceChannelAudio(
                             TrackId: "poll",
+                            Title: "",
+                            Artist: "",
+                            ThumbnailUrl: "",
                             VoiceChannel: vc,
                             User: context.User,
                             Source: context.Channel,
@@ -144,6 +147,8 @@ public sealed class CreatePollBotCommandHandler : ISocketBotCommandHandler<Creat
                             HighPriority: true
                         ));
                     }
+
+                    return Task.CompletedTask;
                 });
         }
 
@@ -428,8 +433,11 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
                     {
                         if (t.IsCompletedSuccessfully)
                         {
-                            t.Result.AddPlayAudioRequestAsync(new VoiceChannelAudio(
+                            return t.Result.AddPlayAudioRequestAsync(new VoiceChannelAudio(
                                 TrackId: option,
+                                Title: "",
+                                Artist: "",
+                                ThumbnailUrl: "",
                                 VoiceChannel: voiceChannel,
                                 User: context.User,
                                 Source: context.Channel,
@@ -438,6 +446,8 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
                                 CompletionCallback: () => { })
                             );
                         }
+
+                        return Task.CompletedTask;
                     });
             }
         }
@@ -534,8 +544,11 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
                     {
                         if (t.IsCompletedSuccessfully)
                         {
-                            t.Result.AddPlayAudioRequestAsync(new VoiceChannelAudio(
+                            return t.Result.AddPlayAudioRequestAsync(new VoiceChannelAudio(
                                 TrackId: option,
+                                Title: "",
+                                Artist: "",
+                                ThumbnailUrl: "",
                                 VoiceChannel: voiceChannel,
                                 User: context.User,
                                 Source: context.Channel,
@@ -544,6 +557,8 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
                                 CompletionCallback: () => { })
                             );
                         }
+
+                        return Task.CompletedTask;
                     });
             }
         }

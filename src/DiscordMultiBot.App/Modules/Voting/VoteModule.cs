@@ -2,6 +2,7 @@
 using Discord.Interactions;
 using DiscordMultiBot.App.Commands;
 using DiscordMultiBot.App.EmbedXml;
+using DiscordMultiBot.App.Utils;
 using DiscordMultiBot.PollService.Command;
 using DiscordMultiBot.PollService.Data.Dto;
 using Microsoft.Extensions.DependencyInjection;
@@ -97,15 +98,31 @@ public partial class VoteModule : InteractionModuleBase<SocketInteractionContext
     [SlashCommand("revote", "Use your last poll values in current poll", ignoreGroupNames: true)]
     public async Task RevoteAsync()
     {
+        var poll = await _dispatcher.QueryAsync(new GetCurrentPollQuery(Context.Channel.Id));
+        if (!poll.IsOK)
+        {
+            return;
+        }
+        
         var addVotesCommand = await _dispatcher.ExecuteAsync(new CreatePollVotesFromHistoryCommand(Context.Channel.Id, Context.User.Id));
         if (addVotesCommand.IsOK)
         {
             await EmbedXmlUtils
-                .CreateResponseEmbed("Revote applied", "Options from the previuos poll were applied")
-                .RespondFromXmlAsync(Context, ephemeral: true);
+                    .CreateResponseEmbed("Revote applied", $"Options ({addVotesCommand.Result.Count()}) from the previous poll were applied",
+                        (x) =>
+                        {
+                            foreach (var vote in addVotesCommand.Result)
+                            {
+                                x.Fields.Add(new EmbedXmlField(
+                                    Name: vote.VoteOption, 
+                                    Value: PollUtils.PollVoteDataByTypeToString(vote.VoteData, poll.Result.Type), 
+                                    Inline: true
+                                ));
+                            }
+                        })
+                    .RespondFromXmlAsync(Context, ephemeral: true);
 
-            var poll = await _dispatcher.QueryAsync(new GetCurrentPollQuery(Context.Channel.Id));
-            await _botDispatcher.ExecuteAsync(Context, new UpdatePollMessageBotCommand(poll.Result));
+            _ = _botDispatcher.ExecuteAsync(Context, new UpdatePollMessageBotCommand(poll.Result));
         }
         else
         {

@@ -74,6 +74,15 @@ public class DiscordAudioManager : IAudioManager<VoiceChannelAudio>
 
         return (uri is not null);
     }
+
+    public record AudioTags(string Title, string Artist);
+
+    public AudioTags DescribeUrl(string trackId)
+    {
+        var res = CreateStreamingResourceByTrackId(trackId);
+        var tags = TagLib.File.Create(System.Web.HttpUtility.UrlDecode(res.Source.AbsolutePath));
+        return new AudioTags(Title: tags.Tag.Title ?? "Unknown", Artist: tags.Tag.JoinedAlbumArtists ?? "Unknown Artist");
+    }
     
     private StreamingResource CreateStreamingResourceByTrackId(string trackId)
     {
@@ -217,10 +226,8 @@ public class DiscordAudioManager : IAudioManager<VoiceChannelAudio>
         VoiceChannelAudioRequest next = _requestQueue.Dequeue();
         _activeRequest = next.Audio;
 
-        string title = "";
-        string artist = "";
         var audio = _ss.Create();
-        if (next.Audio.TrackId.StartsWith("https://"))
+        if (next.Audio.TrackId.StartsWith("https://www.youtube.com"))
         {
             audio.DataProvider = new YtPcmDataProvider(new Uri(next.Audio.TrackId));
         }
@@ -228,9 +235,7 @@ public class DiscordAudioManager : IAudioManager<VoiceChannelAudio>
         {
             var streamingResource = CreateStreamingResourceByTrackId(next.Audio.TrackId);
             audio.DataProvider = new FFmpegPcmDataProvider(streamingResource);
-            TagLib.File tags = TagLib.File.Create(System.Web.HttpUtility.UrlDecode(streamingResource.Source.AbsolutePath));
-            title = tags.Tag.Title ?? "Unknown Title";
-            artist = tags.Tag.JoinedAlbumArtists ?? "Unknown Artist";
+            
         }
         audio.Play();
         _activeAudioSource = audio;
@@ -238,8 +243,8 @@ public class DiscordAudioManager : IAudioManager<VoiceChannelAudio>
         if (!next.Audio.Silent)
         {
             var creator = new EmbedXmlCreator();
-            creator.Bindings["CurrentSong"] = title;
-            creator.Bindings["Artist"] = artist;
+            creator.Bindings["CurrentSong"] = next.Audio.Title;
+            creator.Bindings["Artist"] = next.Audio.Artist;
 
             if (_audioPlayerMessageId == 0)
             {

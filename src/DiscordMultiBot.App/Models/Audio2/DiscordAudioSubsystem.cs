@@ -61,6 +61,7 @@ public class DiscordAudioSource : IAudioSource
             try
             {
                 _outputStream.Write(_dataProvider.Buffer, 0, _dataProvider.BufferedSize);
+                _outputStream.Flush();
             }
             catch (Exception)
             {

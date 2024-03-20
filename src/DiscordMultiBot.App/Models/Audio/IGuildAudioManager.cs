@@ -3,7 +3,10 @@
 namespace DiscordMultiBot.App.Models.Audio;
 
 public record VoiceChannelAudio(
-    string TrackId, 
+    string TrackId,
+    string Title,
+    string Artist,
+    string ThumbnailUrl,
     IVoiceChannel VoiceChannel, 
     IUser User, 
     IMessageChannel Source, 
