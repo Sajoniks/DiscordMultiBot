@@ -103,11 +103,11 @@ public sealed class CreatePollBotCommandHandler : ISocketBotCommandHandler<Creat
         switch (pollType)
         {
             case PollType.Binary:
-                pollLayoutName = "PollBinary";
+                pollLayoutName = Layouts.PollBinary;
                 break;
             
             case PollType.Numeric:
-                pollLayoutName = "PollNumeric";
+                pollLayoutName = Layouts.PollNumeric;
                 break;
             
             default:

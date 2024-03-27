@@ -1,5 +1,6 @@
 ﻿using Discord.Interactions;
 using DiscordMultiBot.App.Commands;
+using DiscordMultiBot.App.EmbedLayouts;
 using DiscordMultiBot.App.EmbedXml;
 using DiscordMultiBot.PollService.Command;
 using DiscordMultiBot.PollService.Data.Dto;
@@ -74,8 +75,11 @@ public partial class PollModule : InteractionModuleBase<SocketInteractionContext
             }
             else
             {
-                await EmbedXmlUtils
-                    .CreateResponseEmbed("Polls were deleted", "Deleted all polls from the current channel")
+                await EmbedXmlCreator
+                    .CreateEmbed(Layouts.PollClear, new Dictionary<string, string>
+                    {
+                        { "Channel", Discord.MentionUtils.MentionChannel(Context.Channel.Id) }
+                    })
                     .RespondFromXmlAsync(Context);
             }
         }

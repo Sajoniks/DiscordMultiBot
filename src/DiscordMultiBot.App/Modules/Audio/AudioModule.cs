@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
+using DiscordMultiBot.App.EmbedLayouts;
 using DiscordMultiBot.App.EmbedXml;
 using DiscordMultiBot.App.Models.Audio;
 using YoutubeSearchApi.Net.Services;
@@ -178,7 +179,7 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 
                     if (newAudio is null)
                     {
-                        await EmbedXmlCreator.CreateEmbed("AudioSearchError", new Dictionary<string, string>
+                        await EmbedXmlCreator.CreateEmbed(Layouts.AudioSearchError, new Dictionary<string, string>
                         {
                             { "Query", url }
                         }).ModifyOriginalResponseFromXmlAsync(Context);
@@ -187,7 +188,7 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
                     {
                         var request = await localManager.AddPlayAudioRequestAsync(newAudio);
                         
-                        await EmbedXmlCreator.CreateEmbed("PlayAudio", new Dictionary<string, string>
+                        await EmbedXmlCreator.CreateEmbed(Layouts.PlayAudio, new Dictionary<string, string>
                         {
                             { "CurrentSong", newAudio.Title },
                             { "Username", MentionUtils.MentionUser(Context.User.Id) },
@@ -208,7 +209,7 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
                         VoiceChannel: vc
                     ));
 
-                    await EmbedXmlCreator.CreateEmbed("PlayAudio", new Dictionary<string, string>
+                    await EmbedXmlCreator.CreateEmbed(Layouts.PlayAudio, new Dictionary<string, string>
                     {
                         { "CurrentSong", url },
                         { "Username", MentionUtils.MentionUser(Context.User.Id) },

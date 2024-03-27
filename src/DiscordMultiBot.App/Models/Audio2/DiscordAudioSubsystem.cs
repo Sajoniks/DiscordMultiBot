@@ -42,18 +42,22 @@ public class DiscordAudioSource : IAudioSource
     {
         if (Interlocked.Exchange(ref _stopRequested, 1) == 0)
         {
+            Console.WriteLine("Stop requested");
             _playing = false;
             Task.Run(() =>
             {
                 try
                 {
+                    Console.WriteLine("Flushing contents");
                     _outputStream.Flush();
+                    _outputStream.Dispose();
                 }
                 catch (Exception)
                 { /**/ }
                 finally
                 {
                     _stopped = 1;
+                    Console.WriteLine("Stopped");
                 }
             });
         }
@@ -165,8 +169,12 @@ public class DiscordAudioSubsystem : IAudioSubsystem<DiscordAudioSource>
 
             if (sleep)
             {
+                Console.WriteLine("AudioSubsystem went sleeping (no audios to process)");
                 // sleep until 
                 _processAudioEvent.WaitOne();
+                
+                Console.WriteLine("AudioSubsystem woke up");
+
                 continue;
             }
 
@@ -175,6 +183,8 @@ public class DiscordAudioSubsystem : IAudioSubsystem<DiscordAudioSource>
             {
                 if (src.Closed)
                 {
+                    Console.WriteLine("Audio closed");
+                    
                     DeleteAudioSource(src);
                     AudioStopped?.Invoke(src);
                 }
@@ -210,6 +220,8 @@ public class DiscordAudioSubsystem : IAudioSubsystem<DiscordAudioSource>
     {
         if (_workerThread is not null) throw new InvalidOperationException();
 
+        Console.WriteLine("Starting subsystem thread");
+        
         _workerThread = new Thread(WorkerThread);
         _workerThread.Name = "Discord Audio Worker Thread";
         _workerThread.Start();
@@ -223,6 +235,8 @@ public class DiscordAudioSubsystem : IAudioSubsystem<DiscordAudioSource>
         {
             if (_workerThread != Thread.CurrentThread)
             {
+                Console.WriteLine("Stopping subsystem thread");
+                
                 _processAudioEvent.Set();
                 _workerThread.Join();
             }
@@ -232,13 +246,16 @@ public class DiscordAudioSubsystem : IAudioSubsystem<DiscordAudioSource>
 
     public static Task<DiscordAudioSubsystem> CreateSubsystemAsync(IVoiceChannel vc, CancellationToken token = default)
     {
+        Console.WriteLine("Creating subsystem {0}", vc.Id);
         return vc.ConnectAsync().ContinueWith(t =>
         {
             if (t.IsCompletedSuccessfully)
             {
+                Console.WriteLine("Subsystem {0} created", vc.Id);
                 return new DiscordAudioSubsystem(vc.Guild, vc, t.Result);
             }
 
+            Console.WriteLine("Subsystem {1} creation error: {0}", t.Exception!.ToString(), vc.Id);
             throw t.Exception!;
         }, token);
     }
