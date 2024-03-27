@@ -1,4 +1,5 @@
 ﻿using Discord;
+using DiscordMultiBot.App.EmbedLayouts;
 
 namespace DiscordMultiBot.App.EmbedXml;
 
@@ -10,7 +11,7 @@ public static class EmbedXmlUtils
         callback?.Invoke(creator);
         creator.Bindings.Add("Title", title);
         creator.Bindings.Add("Desc", desc);
-        return creator.Create("Error");
+        return creator.Create(Layouts.Error);
     }
     
     public static EmbedXmlDoc CreateResponseEmbed(string title, string desc, Action<EmbedXmlCreator>? callback = null)
@@ -19,7 +20,7 @@ public static class EmbedXmlUtils
         callback?.Invoke(creator);
         creator.Bindings.Add("Title", title);
         creator.Bindings.Add("Desc", desc);
-        return creator.Create("Response");
+        return creator.Create(Layouts.Response);
     }
 
     public static Task<IUserMessage> SendMessageFromXmlAsync(this EmbedXmlDoc doc, IMessageChannel channel)

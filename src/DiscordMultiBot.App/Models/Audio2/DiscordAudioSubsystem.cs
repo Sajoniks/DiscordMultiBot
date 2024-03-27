@@ -20,6 +20,7 @@ public class DiscordAudioSource : IAudioSource
         _ss = subsystem;
         _outputStream = outputStream;
         _disposed = false;
+        _stopped = 0;
         _playing = false;
     }
     
@@ -39,16 +40,35 @@ public class DiscordAudioSource : IAudioSource
 
     public void Stop()
     {
-        if (_stopRequested) return;
-        
-        _playing = false;
-        _stopRequested = true;
+        if (Interlocked.Exchange(ref _stopRequested, 1) == 0)
+        {
+            _playing = false;
+            Task.Run(() =>
+            {
+                try
+                {
+                    _outputStream.Flush();
+                }
+                catch (Exception)
+                { /**/ }
+                finally
+                {
+                    _stopped = 1;
+                }
+            });
+        }
     }
+
+    public bool StopRequested => _stopRequested == 1;
+    public bool Closed => _stopped == 1;
 
     public int Update()
     {
         if (_dataProvider is null) throw new NullReferenceException();
-        if (_stopRequested) return 0;
+        if (StopRequested || Closed)
+        {
+            return 0;
+        }
         
         if (_dataProvider.EndOfStream)
         {
@@ -61,13 +81,9 @@ public class DiscordAudioSource : IAudioSource
             try
             {
                 _outputStream.Write(_dataProvider.Buffer, 0, _dataProvider.BufferedSize);
-                _outputStream.Flush();
             }
             catch (Exception)
-            {
-                // audio was disposed or something
-                // ignore
-            }
+            { /**/ }
         }
 
         return streamed;
@@ -78,7 +94,6 @@ public class DiscordAudioSource : IAudioSource
         if (_disposed) throw new ObjectDisposedException(nameof(DiscordAudioSource));
         _disposed = true;
         _dataProvider?.Dispose();
-        _outputStream.Dispose();
     }
 
     private bool _disposed;
@@ -86,7 +101,8 @@ public class DiscordAudioSource : IAudioSource
     private IPcmDataProvider? _dataProvider;
     private DiscordAudioSubsystem _ss;
     private bool _playing;
-    private bool _stopRequested;
+    private int _stopped;
+    private int _stopRequested;
 }
 
 public class DiscordAudioSubsystem : IAudioSubsystem<DiscordAudioSource>
@@ -155,16 +171,25 @@ public class DiscordAudioSubsystem : IAudioSubsystem<DiscordAudioSource>
             }
 
             var src = _audios[_updateIndex];
-            int upd = src.Update();
-
-            if (upd == 0)
+            if (src.StopRequested)
             {
-                // stop
-                src.Stop();
-                DeleteAudioSource(src);
-
-                AudioStopped?.Invoke(src);
+                if (src.Closed)
+                {
+                    DeleteAudioSource(src);
+                    AudioStopped?.Invoke(src);
+                }
             }
+            else
+            {
+                int upd = src.Update();
+
+                if (upd == 0)
+                {
+                    // stop
+                    src.Stop();
+                }
+            }
+            
 
         } while (_pendingExit == 0);
 
@@ -193,23 +218,19 @@ public class DiscordAudioSubsystem : IAudioSubsystem<DiscordAudioSource>
     public void Stop()
     {
         if (_workerThread is null) throw new InvalidOperationException();
-        
-        int stop = 1;
-        int prev;
-        do
-        {
-            prev = _pendingExit;
-        } while (prev != Interlocked.CompareExchange(ref _pendingExit, stop, prev));
 
-        if (_workerThread != Thread.CurrentThread)
+        if (Interlocked.Exchange(ref _pendingExit, 1) == 0)
         {
-            _workerThread.Join();
+            if (_workerThread != Thread.CurrentThread)
+            {
+                _processAudioEvent.Set();
+                _workerThread.Join();
+            }
+            _workerThread = null;
         }
-        
-        _workerThread = null;
     }
 
-    public static Task<DiscordAudioSubsystem> CreateSubsystemAsync(IVoiceChannel vc)
+    public static Task<DiscordAudioSubsystem> CreateSubsystemAsync(IVoiceChannel vc, CancellationToken token = default)
     {
         return vc.ConnectAsync().ContinueWith(t =>
         {
@@ -219,7 +240,7 @@ public class DiscordAudioSubsystem : IAudioSubsystem<DiscordAudioSource>
             }
 
             throw t.Exception!;
-        });
+        }, token);
     }
     
     public DiscordAudioSource Create()

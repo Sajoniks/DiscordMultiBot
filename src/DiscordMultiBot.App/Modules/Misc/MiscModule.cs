@@ -1,11 +1,17 @@
 ﻿using Discord.Interactions;
+using DiscordMultiBot.App.EmbedLayouts;
 using DiscordMultiBot.App.EmbedXml;
 
 namespace DiscordMultiBot.App.Modules.Misc;
 
 public class MiscModule : InteractionModuleBase<SocketInteractionContext>
 {
-    [SlashCommand("roll", "Do a roll of a dice")]
+    private static readonly int[] ValidDice = new[]
+    { 2, 4, 6, 8, 10, 12, 20 };
+
+    private static readonly string ValidDiceString = String.Join(", ", ValidDice.Select(x => x.ToString()));
+
+[SlashCommand("roll", "Do a roll of a dice")]
     public async Task RollDiceAsync(
         [Summary("roll", "Dice notation")] string dice, 
         [Summary("class", "Complexity class"), MinValue(1), ] int cp = 0
@@ -17,7 +23,30 @@ public class MiscModule : InteractionModuleBase<SocketInteractionContext>
             string[] value = notation[1].Split('+');
 
             int numDice = Int32.Parse(notation[0].Trim());
-            int diceValue = Int32.Parse(value[0].Trim());;
+            if (numDice <= 0)
+            {
+                var responseCreator = new EmbedXmlCreator();
+                responseCreator.Bindings["Value"] = notation[0];
+
+                await responseCreator
+                    .Create(Layouts.RollNumDiceError)
+                    .RespondFromXmlAsync(Context, ephemeral: true);
+                return;
+            }
+            
+            int diceValue = Int32.Parse(value[0].Trim());
+            if (ValidDice.All(x => x != diceValue))
+            {
+                var responseCreator = new EmbedXmlCreator();
+                responseCreator.Bindings["Die"] = value[0];
+                responseCreator.Bindings["Dice"] = ValidDiceString;
+
+                await responseCreator
+                    .Create(Layouts.RollDiceError)
+                    .RespondFromXmlAsync(Context, ephemeral: true);
+                return;
+            }
+            
             if (value.Length > 1)
             {
                 for (int i = 1; i < value.Length; ++i)
@@ -61,7 +90,7 @@ public class MiscModule : InteractionModuleBase<SocketInteractionContext>
                     }
                 }
 
-                await creator.Create("RollCp").RespondFromXmlAsync(Context);
+                await creator.Create(Layouts.RollCp).RespondFromXmlAsync(Context);
             }
             else
             {
@@ -91,14 +120,14 @@ public class MiscModule : InteractionModuleBase<SocketInteractionContext>
                 }
                 
                 creator.Bindings.Add("Color", hexColor);
-                await creator.Create("Roll").RespondFromXmlAsync(Context);
+                await creator.Create(Layouts.Roll).RespondFromXmlAsync(Context);
             }
         }
         catch (Exception)
         {
             await
                 EmbedXmlUtils
-                    .CreateErrorEmbed("Error", "Error in notation")
+                    .CreateErrorEmbed(Layouts.Error, "Error in notation")
                     .RespondFromXmlAsync(Context, ephemeral: true);
         }
     }

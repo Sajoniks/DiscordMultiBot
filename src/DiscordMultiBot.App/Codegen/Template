@@ -1,0 +1,9 @@
+﻿namespace DiscordMultiBot.App.EmbedLayouts;
+
+/// <summary>
+///	Layout names literal constants.
+/// </summary>
+public static class Layouts 
+{ 
+
+}

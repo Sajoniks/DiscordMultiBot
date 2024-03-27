@@ -3,6 +3,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordMultiBot.App.Data;
+using DiscordMultiBot.App.EmbedLayouts;
 using DiscordMultiBot.App.EmbedXml;
 using DiscordMultiBot.App.Models.Audio;
 using DiscordMultiBot.App.Utils;
@@ -231,7 +232,7 @@ public sealed class UpdatePollMessageCommandHandler : ISocketBotCommandHandler<U
             ++groupingIdx;
         }
         
-        EmbedXmlDoc e = xml.Create("PollBinary");
+        EmbedXmlDoc e = xml.Create(Layouts.PollBinary);
         _ = context.Channel.ModifyMessageAsync(pollMetadata.MessageId, props =>
         {
             props.Embeds = e.Embeds;
@@ -265,7 +266,7 @@ public sealed class UpdatePollMessageCommandHandler : ISocketBotCommandHandler<U
             ++groupingIdx;
         }
 
-        EmbedXmlDoc e = xml.Create("PollNumeric");
+        EmbedXmlDoc e = xml.Create(Layouts.PollNumeric);
         _ = context.Channel.ModifyMessageAsync(pollMetadata.MessageId, props =>
         {
             props.Embeds = e.Embeds;
@@ -377,7 +378,7 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
         {
             EmbedXmlCreator err = new EmbedXmlCreator();
             err.Bindings.Add("Title", "Nothing was voted");
-            EmbedXmlDoc errEmbed = err.Create("Error");
+            EmbedXmlDoc errEmbed = err.Create(Layouts.Error);
 
             await context.Channel.SendMessageAsync(text: errEmbed.Text, embeds: errEmbed.Embeds);
             return ResultDto.CreateOK();
@@ -487,8 +488,8 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
         }
         optionXml.Bindings.Add("Color", colorHex);
         
-        EmbedXmlDoc optionEmbed = optionXml.Create("PollOption");
-        EmbedXmlDoc optionsViewEmbed = resultXml.Create("PollResult");
+        EmbedXmlDoc optionEmbed = optionXml.Create(Layouts.PollOption);
+        EmbedXmlDoc optionsViewEmbed = resultXml.Create(Layouts.PollResult);
 
         await context.Channel.SendMessageAsync(text: optionEmbed.Text, embeds: optionEmbed.Embeds);
         await context.Channel.SendMessageAsync(text: optionsViewEmbed.Text, embeds: optionsViewEmbed.Embeds);
@@ -506,7 +507,7 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
         {
             EmbedXmlCreator err = new EmbedXmlCreator();
             err.Bindings.Add("Title", "Nothing was voted");
-            EmbedXmlDoc errEmbed = err.Create("Error");
+            EmbedXmlDoc errEmbed = err.Create(Layouts.Error);
 
             await context.Channel.SendMessageAsync(text: errEmbed.Text, embeds: errEmbed.Embeds);
             return ResultDto.CreateOK();
@@ -597,8 +598,8 @@ public sealed class WritePollResultsCommandHandler : ISocketBotCommandHandler<Wr
         }
         optionXml.Bindings.Add("Color", colorHex);
         
-        EmbedXmlDoc optionEmbed = optionXml.Create("PollOption");
-        EmbedXmlDoc optionsViewEmbed = resultXml.Create("PollResult");
+        EmbedXmlDoc optionEmbed = optionXml.Create(Layouts.PollOption);
+        EmbedXmlDoc optionsViewEmbed = resultXml.Create(Layouts.PollResult);
 
         await context.Channel.SendMessageAsync(text: optionEmbed.Text, embeds: optionEmbed.Embeds);
         await context.Channel.SendMessageAsync(text: optionsViewEmbed.Text, embeds: optionsViewEmbed.Embeds);

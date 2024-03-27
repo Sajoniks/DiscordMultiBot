@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using DiscordMultiBot.App.EmbedLayouts;
 using DiscordMultiBot.App.EmbedXml;
 using DiscordMultiBot.App.Logging;
 using DiscordMultiBot.App.Models.Audio2;
@@ -249,7 +250,7 @@ public class DiscordAudioManager : IAudioManager<VoiceChannelAudio>
             if (_audioPlayerMessageId == 0)
             {
                 _ = creator
-                    .Create("AudioPlayer")
+                    .Create(Layouts.AudioPlayer)
                     .SendMessageFromXmlAsync(next.Audio.Source)
                     .ContinueWith(t =>
                     {
@@ -262,7 +263,7 @@ public class DiscordAudioManager : IAudioManager<VoiceChannelAudio>
             else
             {
                 _ = creator
-                    .Create("AudioPlayer")
+                    .Create(Layouts.AudioPlayer)
                     .ModifyMessageFromXmlAsync(_audioPlayerMessageId, next.Audio.Source);
             }
         }

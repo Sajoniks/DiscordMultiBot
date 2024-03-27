@@ -36,11 +36,7 @@ public class EmbedXmlCreator : IEmbedXmlCreator
     
     private StreamReader CreateXmlStream(string name)
     {
-        var fileName = $"{name}View.xml";
-        var assembly = Assembly.GetExecutingAssembly();
-        var resourceName = assembly.GetManifestResourceNames().First(x => x.EndsWith(fileName));
-        var stream = assembly.GetManifestResourceStream(resourceName) ?? throw new NullReferenceException();
-        return new StreamReader(stream);
+        return EmbedLayouts.LayoutManager.CreateViewReader(name);
     }
     
     public EmbedXmlDoc Create(string layoutName)

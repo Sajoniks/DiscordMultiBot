@@ -138,107 +138,91 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 
                 if (!localManager.TryFindUri(url, out var _))
                 {
-                    if (url.StartsWith("https://"))
+                    VoiceChannelAudio? newAudio = null;
+                    using (var httpClient = new HttpClient())
                     {
-                        // possibly uri
-                        var uri = new Uri(url);
-                        if (uri.Host.Equals("youtube.com"))
+                        if (url.StartsWith("https://"))
                         {
-                            
+                            // @todo
+                            // need to parse metadata
+
+                            newAudio = new VoiceChannelAudio(
+                                TrackId: url,
+                                User: Context.User,
+                                Title: "",
+                                Artist: "",
+                                ThumbnailUrl: "",
+                                Source: Context.Channel,
+                                VoiceChannel: vc
+                            );
                         }
-                    }
-                    else
-                    {
-                        bool playedAnything = false;
-                        using (var httpClient = new HttpClient())
+                        else
                         {
                             var querier = new YoutubeSearchClient(httpClient);
                             var results = await querier.SearchAsync(url);
-
+                            
                             if (results.Results.Any())
                             {
                                 var result = results.Results.First();
-                                var request = await localManager.AddPlayAudioRequestAsync(new VoiceChannelAudio(
+                                newAudio = new VoiceChannelAudio(
                                     TrackId: result.Url,
                                     User: Context.User,
+                                    Title: result.Title,
+                                    Artist: result.Author,
+                                    ThumbnailUrl: result.ThumbnailUrl,
                                     Source: Context.Channel,
-                                    VoiceChannel: vc)
-                                );
-                                
-                                if (!localManager.IsEnqueued(request))
-                                {
-                                    playedAnything = true;
-                                    await ModifyOriginalResponseAsync((props) =>
-                                    {
-                                        EmbedXmlDoc doc =
-                                            EmbedXmlUtils.CreateResponseEmbed("Play audio",
-                                                $"Playing `{result.Title}` in the channel {MentionUtils.MentionChannel(vc.Id)}");
-                                        props.Components = doc.Comps;
-                                        props.Content = doc.Text;
-                                        props.Embeds = doc.Embeds;
-                                    });
-                                }
+                                    VoiceChannel: vc);
                             }
                         }
+                    }
 
-                        if (!playedAnything)
+                    if (newAudio is null)
+                    {
+                        await EmbedXmlCreator.CreateEmbed("AudioSearchError", new Dictionary<string, string>
                         {
-                            await ModifyOriginalResponseAsync((props) =>
-                            {
-                                EmbedXmlDoc doc =
-                                    EmbedXmlUtils.CreateErrorEmbed("Audio search", "Failed to find anything");
-                                props.Components = doc.Comps;
-                                props.Content = doc.Text;
-                                props.Embeds = doc.Embeds;
-                            });
-                        }
+                            { "Query", url }
+                        }).ModifyOriginalResponseFromXmlAsync(Context);
+                    }
+                    else
+                    {
+                        var request = await localManager.AddPlayAudioRequestAsync(newAudio);
+                        
+                        await EmbedXmlCreator.CreateEmbed("PlayAudio", new Dictionary<string, string>
+                        {
+                            { "CurrentSong", newAudio.Title },
+                            { "Username", MentionUtils.MentionUser(Context.User.Id) },
+                            { "Channel", MentionUtils.MentionChannel(newAudio.VoiceChannel.Id) }
+                        }).ModifyOriginalResponseFromXmlAsync(Context);
                     }
                 }
                 else
                 {
+                    var tags = localManager.DescribeUrl(url);
                     var request = await localManager.AddPlayAudioRequestAsync(new VoiceChannelAudio(
                         TrackId: url,
                         User: Context.User,
+                        Title: tags.Title,
+                        Artist: tags.Artist,
+                        ThumbnailUrl: "",
                         Source: Context.Channel,
                         VoiceChannel: vc
                     ));
 
-                    if (!localManager.IsEnqueued(request))
+                    await EmbedXmlCreator.CreateEmbed("PlayAudio", new Dictionary<string, string>
                     {
-                        await ModifyOriginalResponseAsync((props) =>
-                        {
-                            EmbedXmlDoc doc =
-                                EmbedXmlUtils.CreateResponseEmbed("Play audio",
-                                    $"Playing `{url}` in the channel {MentionUtils.MentionChannel(vc.Id)}");
-                            props.Components = doc.Comps;
-                            props.Content = doc.Text;
-                            props.Embeds = doc.Embeds;
-                        });
-                    }
-                    else
-                    {
-                        await ModifyOriginalResponseAsync((props) =>
-                        {
-                            EmbedXmlDoc doc =
-                                EmbedXmlUtils.CreateResponseEmbed("Play audio",
-                                    $"Enqueued `{url}` in the channel {MentionUtils.MentionChannel(vc.Id)}");
-                            props.Components = doc.Comps;
-                            props.Content = doc.Text;
-                            props.Embeds = doc.Embeds;
-                        });
-                    }
+                        { "CurrentSong", url },
+                        { "Username", MentionUtils.MentionUser(Context.User.Id) },
+                        { "Channel", MentionUtils.MentionChannel(vc.Id) }
+                    }).ModifyOriginalResponseFromXmlAsync(Context);
                 }
             }
             catch (Exception e)
             {
-                await ModifyOriginalResponseAsync((props) =>
-                {
-                    EmbedXmlDoc doc =
-                        EmbedXmlUtils.CreateErrorEmbed("Play audio error", "Failed to play audio. Try again later.");
-                    props.Components = doc.Comps;
-                    props.Content = doc.Text;
-                    props.Embeds = doc.Embeds;
-                });
+                await EmbedXmlUtils
+                    .CreateErrorEmbed("Play audio error", "Failed to play audio. Try again later.")
+                    .ModifyOriginalResponseFromXmlAsync(Context);
+                
+                Console.WriteLine(e);
             }
         }
     }
